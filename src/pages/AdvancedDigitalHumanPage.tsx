@@ -7,6 +7,7 @@ import BehaviorControlPanel from '../components/BehaviorControlPanel';
 import { useDigitalHumanStore } from '../store/digitalHumanStore';
 import { ttsService, asrService } from '../core/audio/audioService';
 import { digitalHumanEngine } from '../core/avatar/DigitalHumanEngine';
+import { sendUserInput } from '../core/dialogue/dialogueService';
 import { Toaster, toast } from 'sonner';
 
 export default function AdvancedDigitalHumanPage() {
@@ -26,6 +27,9 @@ export default function AdvancedDigitalHumanPage() {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
   const [currentBehavior, setCurrentBehavior] = useState('idle');
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<{ id: number; role: 'user' | 'assistant'; text: string }[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   // 处理模型加载完成
   const handleModelLoad = (model: any) => {
@@ -50,6 +54,62 @@ export default function AdvancedDigitalHumanPage() {
     digitalHumanEngine.reset();
     setCurrentBehavior('idle');
     toast.info('数字人重置到初始状态');
+  };
+
+  // 处理对话发送（文本或语音）
+  const handleChatSend = async (text?: string) => {
+    const content = (text ?? chatInput).trim();
+    if (!content) return;
+
+    const userMessage = {
+      id: Date.now(),
+      role: 'user' as const,
+      text: content
+    };
+    setChatMessages((prev) => [...prev, userMessage]);
+
+    if (!text) {
+      setChatInput('');
+    }
+
+    setIsChatLoading(true);
+    try {
+      const res = await sendUserInput({
+        userText: content,
+        sessionId: 'demo-session'
+      });
+
+      const assistantMessage = {
+        id: Date.now() + 1,
+        role: 'assistant' as const,
+        text: res.replyText
+      };
+      setChatMessages((prev) => [...prev, assistantMessage]);
+
+      if (res.emotion) {
+        digitalHumanEngine.setEmotion(res.emotion);
+        if (res.emotion === 'happy') {
+          digitalHumanEngine.setExpression('smile');
+        } else if (res.emotion === 'surprised') {
+          digitalHumanEngine.setExpression('surprise');
+        } else {
+          digitalHumanEngine.setExpression('neutral');
+        }
+      }
+
+      if (res.action && res.action !== 'idle') {
+        digitalHumanEngine.playAnimation(res.action);
+      }
+
+      if (res.replyText) {
+        ttsService.speak(res.replyText);
+      }
+    } catch (error) {
+      console.error('对话接口调用失败:', error);
+      toast.error('对话服务异常，请稍后重试');
+    } finally {
+      setIsChatLoading(false);
+    }
   };
 
   // 处理录音开关
@@ -118,7 +178,7 @@ export default function AdvancedDigitalHumanPage() {
   // 处理语音识别结果
   const handleTranscript = (text: string) => {
     console.log('语音识别结果:', text);
-    handleVoiceCommand(text);
+    void handleChatSend(text);
   };
 
   // 处理语音合成
@@ -155,6 +215,7 @@ export default function AdvancedDigitalHumanPage() {
   const tabs = [
     { id: 'basic', label: '基础控制', icon: '🎮' },
     { id: 'voice', label: '语音交互', icon: '🎤' },
+    { id: 'chat', label: '对话', icon: '💬' },
     { id: 'expression', label: '表情控制', icon: '😊' },
     { id: 'behavior', label: '行为控制', icon: '🧠' }
   ];
@@ -263,6 +324,54 @@ export default function AdvancedDigitalHumanPage() {
                   onTranscript={handleTranscript}
                   onSpeak={handleSpeak}
                 />
+              )}
+              
+              {activeTab === 'chat' && (
+                <div className="bg-white rounded-lg shadow-lg p-4 space-y-4">
+                  <div className="h-48 overflow-y-auto bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
+                    {chatMessages.length === 0 && (
+                      <div className="text-gray-400 text-center">暂无对话，先输入点什么吧。</div>
+                    )}
+                    {chatMessages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[80%] px-3 py-2 rounded-lg ${
+                            msg.role === 'user'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-200 text-gray-800'
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <input
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          void handleChatSend();
+                        }
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      placeholder="输入要对数字人说的话..."
+                    />
+                    <button
+                      onClick={() => void handleChatSend()}
+                      disabled={isChatLoading}
+                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg text-sm transition-colors"
+                    >
+                      {isChatLoading ? '发送中...' : '发送'}
+                    </button>
+                  </div>
+                </div>
               )}
               
               {activeTab === 'expression' && (
