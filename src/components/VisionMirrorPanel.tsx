@@ -4,9 +4,10 @@ import type { UserEmotion } from '../core/vision/visionMapper';
 
 interface VisionMirrorPanelProps {
   onEmotionChange: (emotion: UserEmotion) => void;
+  onHeadMotion?: (motion: 'nod' | 'shakeHead') => void;
 }
 
-export default function VisionMirrorPanel({ onEmotionChange }: VisionMirrorPanelProps) {
+export default function VisionMirrorPanel({ onEmotionChange, onHeadMotion }: VisionMirrorPanelProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState<UserEmotion>('neutral');
@@ -25,10 +26,18 @@ export default function VisionMirrorPanel({ onEmotionChange }: VisionMirrorPanel
       onEmotionChange('neutral');
     } else {
       if (videoRef.current) {
-        await visionService.start(videoRef.current, (emotion) => {
-          setCurrentEmotion(emotion);
-          onEmotionChange(emotion);
-        });
+        await visionService.start(
+          videoRef.current,
+          (emotion) => {
+            setCurrentEmotion(emotion);
+            onEmotionChange(emotion);
+          },
+          (motion) => {
+            if (onHeadMotion) {
+              onHeadMotion(motion);
+            }
+          },
+        );
         setIsCameraOn(true);
       }
     }

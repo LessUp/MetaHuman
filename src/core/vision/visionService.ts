@@ -1,6 +1,7 @@
 import { mapFaceToEmotion, UserEmotion } from './visionMapper';
 
 type EmotionCallback = (emotion: UserEmotion) => void;
+type MotionCallback = (motion: 'nod' | 'shakeHead') => void;
 
 class VisionService {
   private video: HTMLVideoElement | null = null;
@@ -8,14 +9,25 @@ class VisionService {
   private running = false;
   private faceMesh: any = null;
   private onEmotion: EmotionCallback | null = null;
+  private onMotion: MotionCallback | null = null;
+  private yawHistory: number[] = [];
+  private pitchHistory: number[] = [];
 
-  async start(videoElement: HTMLVideoElement, onEmotion: EmotionCallback): Promise<void> {
+  async start(
+    videoElement: HTMLVideoElement,
+    onEmotion: EmotionCallback,
+    onMotion?: MotionCallback,
+  ): Promise<void> {
     if (this.running) {
       this.onEmotion = onEmotion;
+      if (onMotion) {
+        this.onMotion = onMotion;
+      }
       return;
     }
     this.video = videoElement;
     this.onEmotion = onEmotion;
+    this.onMotion = onMotion ?? null;
     if (!navigator.mediaDevices?.getUserMedia) {
       return;
     }
@@ -49,6 +61,11 @@ class VisionService {
         const emotion = mapFaceToEmotion(results);
         if (this.onEmotion) {
           this.onEmotion(emotion);
+        }
+        const landmarks = results?.multiFaceLandmarks?.[0];
+        const motion = this.detectHeadMotion(landmarks);
+        if (motion && this.onMotion) {
+          this.onMotion(motion);
         }
       });
       this.running = true;
@@ -85,6 +102,67 @@ class VisionService {
     }
     this.faceMesh = null;
     this.onEmotion = null;
+    this.onMotion = null;
+    this.yawHistory = [];
+    this.pitchHistory = [];
+  }
+
+  private computeHeadPose(landmarks: any): { yaw: number; pitch: number } | null {
+    if (!landmarks || landmarks.length < 300) {
+      return null;
+    }
+    const leftEye = landmarks[33];
+    const rightEye = landmarks[263];
+    const nose = landmarks[1];
+    const forehead = landmarks[10];
+    const chin = landmarks[152];
+    if (!leftEye || !rightEye || !nose || !forehead || !chin) {
+      return null;
+    }
+    const centerX = (leftEye.x + rightEye.x) / 2;
+    const yaw = nose.x - centerX;
+    const midY = (forehead.y + chin.y) / 2;
+    const pitch = nose.y - midY;
+    return { yaw, pitch };
+  }
+
+  private detectHeadMotion(landmarks: any): 'nod' | 'shakeHead' | null {
+    const pose = this.computeHeadPose(landmarks);
+    if (!pose) {
+      return null;
+    }
+    const { yaw, pitch } = pose;
+    this.yawHistory.push(yaw);
+    this.pitchHistory.push(pitch);
+    if (this.yawHistory.length > 20) {
+      this.yawHistory.shift();
+    }
+    if (this.pitchHistory.length > 20) {
+      this.pitchHistory.shift();
+    }
+    if (this.yawHistory.length < 10 || this.pitchHistory.length < 10) {
+      return null;
+    }
+    const yawMin = Math.min(...this.yawHistory);
+    const yawMax = Math.max(...this.yawHistory);
+    const pitchMin = Math.min(...this.pitchHistory);
+    const pitchMax = Math.max(...this.pitchHistory);
+    const yawRange = yawMax - yawMin;
+    const pitchRange = pitchMax - pitchMin;
+    const nodThreshold = 0.04;
+    const shakeThreshold = 0.04;
+    const tolerance = 0.02;
+    if (pitchRange > nodThreshold && yawRange < tolerance) {
+      this.yawHistory = [];
+      this.pitchHistory = [];
+      return 'nod';
+    }
+    if (yawRange > shakeThreshold && pitchRange < tolerance) {
+      this.yawHistory = [];
+      this.pitchHistory = [];
+      return 'shakeHead';
+    }
+    return null;
   }
 }
 

@@ -340,6 +340,9 @@ export default function AdvancedDigitalHumanPage() {
                     }
                     digitalHumanEngine.setEmotion(emotion);
                   }}
+                  onHeadMotion={(motion) => {
+                    digitalHumanEngine.playAnimation(motion);
+                  }}
                 />
               )}
               
