@@ -91,6 +91,12 @@ function DigitalHumanModel({ modelUrl, onModelLoad }: { modelUrl?: string; onMod
       if (head) {
         head.rotation.y = Math.sin(state.clock.elapsedTime * 0.8) * 0.05;
       }
+      
+      // 添加呼吸效果
+      const body = meshRef.current.children[0];
+      if (body) {
+        body.scale.y = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.02;
+      }
     }
   });
   

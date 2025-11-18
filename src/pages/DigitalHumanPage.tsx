@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import DigitalHumanViewer from '../components/DigitalHumanViewer';
 import ControlPanel from '../components/ControlPanel';
 import { useDigitalHumanStore, ttsService, asrService } from '../store/digitalHumanStore';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 
 export default function DigitalHumanPage() {
   const {
@@ -86,8 +86,35 @@ export default function DigitalHumanPage() {
   // 处理语音命令
   const handleVoiceCommand = (command: string) => {
     console.log('执行语音命令:', command);
+    
+    // 立即显示点击反馈
+    alert(`点击了: ${command}`);
+    
+    // 检查浏览器是否支持语音合成
+    if (!('speechSynthesis' in window)) {
+      console.error('浏览器不支持语音合成');
+      toast.error('浏览器不支持语音合成功能');
+      return;
+    }
+    
+    // 添加视觉反馈
+    const message = `正在执行命令：${command}`;
+    console.log('TTS消息:', message);
+    
+    // 显示toast通知
+    toast.success(`执行命令: ${command}`);
+    
     // 语音命令处理已经在ASRService中实现
-    ttsService.speak(`正在执行命令：${command}`);
+    try {
+      // 添加延迟以确保用户交互被正确识别
+      setTimeout(() => {
+        ttsService.speak(message);
+        console.log('TTS命令发送成功');
+      }, 100);
+    } catch (error) {
+      console.error('TTS执行失败:', error);
+      toast.error('语音合成失败');
+    }
   };
 
   // 组件卸载时清理
