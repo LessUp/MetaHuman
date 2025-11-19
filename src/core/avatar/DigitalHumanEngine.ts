@@ -27,8 +27,9 @@ export class DigitalHumanEngine {
   }
 
   playAnimation(name: string) {
-    const { setAnimation } = useDigitalHumanStore.getState();
+    const { setAnimation, setPlaying } = useDigitalHumanStore.getState();
     setAnimation(name);
+    setPlaying(true);
   }
 }
 

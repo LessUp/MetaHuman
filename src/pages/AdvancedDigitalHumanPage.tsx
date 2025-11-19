@@ -199,6 +199,7 @@ export default function AdvancedDigitalHumanPage() {
     setCurrentBehavior(behavior);
     console.log(`行为变化: ${behavior}, 参数:`, parameters);
     toast.info(`行为切换到: ${behavior}`);
+    digitalHumanEngine.playAnimation(behavior);
   };
 
   // 组件卸载时清理
