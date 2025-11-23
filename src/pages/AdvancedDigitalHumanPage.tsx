@@ -307,7 +307,7 @@ export default function AdvancedDigitalHumanPage() {
             </div>
 
             {/* 标签页内容 */}
-            <div className="space-y-6">
+            <div key={activeTab} className="flex-1 min-h-0 space-y-6 animate-fade-in">
               {activeTab === 'basic' && (
                 <ControlPanel
                   isPlaying={isPlaying}
