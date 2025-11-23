@@ -56,18 +56,43 @@ vi.mock('@react-three/drei', () => ({
   OrbitControls: () => <div data-testid="orbit-controls">OrbitControls</div>,
   Environment: () => <div data-testid="environment">Environment</div>,
   Html: ({ children }: { children: React.ReactNode }) => <div data-testid="html">{children}</div>,
+  PerspectiveCamera: ({ children }: { children?: React.ReactNode }) => <div data-testid="perspective-camera">{children}</div>,
+  Float: ({ children }: { children: React.ReactNode }) => <div data-testid="float">{children}</div>,
+  Sparkles: () => <div data-testid="sparkles">Sparkles</div>,
+  ContactShadows: () => <div data-testid="contact-shadows">ContactShadows</div>,
   useGLTF: vi.fn()
 }));
 
 vi.mock('three', () => ({
   BoxGeometry: vi.fn(function BoxGeometry() { return {}; }),
   SphereGeometry: vi.fn(function SphereGeometry() { return {}; }),
-  MeshStandardMaterial: vi.fn(function MeshStandardMaterial(props: any) { 
-    return { 
-      color: props?.color || 0xffffff, 
-      metalness: props?.metalness || 0, 
-      roughness: props?.roughness || 1 
-    }; 
+  MeshPhysicalMaterial: vi.fn(function MeshPhysicalMaterial(props: any) {
+    return {
+      color: props?.color || 0xffffff,
+      metalness: props?.metalness || 0,
+      roughness: props?.roughness || 1,
+      clearcoat: props?.clearcoat || 0,
+      clearcoatRoughness: props?.clearcoatRoughness || 0
+    };
+  }),
+  MeshStandardMaterial: vi.fn(function MeshStandardMaterial(props: any) {
+    return {
+      color: props?.color || 0xffffff,
+      metalness: props?.metalness || 0,
+      roughness: props?.roughness || 1
+    };
+  }),
+  MeshBasicMaterial: vi.fn(function MeshBasicMaterial(props: any) {
+    return {
+      color: props?.color || 0xffffff,
+      emissive: props?.emissive,
+      emissiveIntensity: props?.emissiveIntensity,
+      transparent: props?.transparent,
+      opacity: props?.opacity,
+      side: props?.side,
+      wireframe: props?.wireframe,
+      toneMapped: props?.toneMapped
+    };
   }),
   Mesh: vi.fn(function Mesh() {
     const mesh = {
@@ -91,7 +116,11 @@ vi.mock('three', () => ({
     return group;
   }),
   Vector3: vi.fn(function Vector3(x = 0, y = 0, z = 0) { return { x, y, z }; }),
-  Color: vi.fn(function Color(color = 0xffffff) { return { getHex: () => color }; })
+  Color: vi.fn(function Color(color = 0xffffff) { return { getHex: () => color }; }),
+  MathUtils: {
+    lerp: (start: number, end: number, alpha: number) => start + (end - start) * alpha
+  },
+  DoubleSide: 'DoubleSide'
 }));
 
 describe('DigitalHumanViewer', () => {
