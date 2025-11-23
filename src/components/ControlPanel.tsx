@@ -27,15 +27,15 @@ export default function ControlPanel({
   onVoiceCommand
 }: ControlPanelProps) {
   const voiceCommands = [
-    { command: '打招呼', label: '打招呼' },
-    { command: '跳舞', label: '跳舞' },
-    { command: '说话', label: '说话' },
-    { command: '表情', label: '表情' }
+    { command: '打招呼', label: '👋 打招呼' },
+    { command: '跳舞', label: '💃 跳舞' },
+    { command: '说话', label: '🗣️ 说话' },
+    { command: '表情', label: '😊 表情' }
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-lg p-6 space-y-5 border border-white/20 transition-all hover:shadow-xl">
+      <div className="flex items-center justify-between pb-4 border-b border-gray-200/50">
         <h2 className="text-xl font-bold text-gray-800">数字人控制面板</h2>
         <div className="flex items-center space-x-2">
           <div className={`w-3 h-3 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`}></div>
@@ -128,9 +128,9 @@ export default function ControlPanel({
       </div>
 
       {/* 状态信息 */}
-      <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+      <div className="bg-gray-50/80 rounded-xl p-4 space-y-2 border border-gray-100">
         <h3 className="text-sm font-semibold text-gray-700">状态信息</h3>
-        <div className="text-xs text-gray-600 space-y-1">
+        <div className="text-xs text-gray-600 space-y-2">
           <div className="flex justify-between">
             <span>连接状态:</span>
             <span className="text-green-600">在线</span>

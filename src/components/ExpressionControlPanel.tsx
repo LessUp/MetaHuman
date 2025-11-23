@@ -45,12 +45,12 @@ export default function ExpressionControlPanel({ currentExpression, onExpression
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-lg p-6 space-y-6 border border-white/20">
+      <div className="flex items-center justify-between border-b border-gray-200/50 pb-4">
         <h3 className="text-lg font-semibold text-gray-800">面部表情控制</h3>
-        <div className="flex items-center space-x-2">
-          <Palette size={20} className="text-gray-600" />
-          <span className="text-sm text-gray-600">当前: {currentExpression}</span>
+        <div className="flex items-center space-x-2 px-3 py-1 bg-gray-100/50 rounded-full">
+          <Palette size={16} className="text-gray-500" />
+          <span className="text-xs text-gray-500 font-medium">当前: {currentExpression}</span>
         </div>
       </div>
 
@@ -60,18 +60,18 @@ export default function ExpressionControlPanel({ currentExpression, onExpression
           <button
             key={expression.name}
             onClick={() => handleExpressionClick(expression.name, expression.intensity)}
-            className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all duration-200 ${
+            className={`flex items-center space-x-3 p-3 rounded-xl border transition-all duration-200 group ${
               currentExpression === expression.name
-                ? 'border-blue-500 bg-blue-50 shadow-md'
-                : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                ? 'border-blue-500/50 bg-blue-50/80 shadow-blue-100 shadow-md'
+                : 'border-gray-200/60 bg-white/50 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5'
             }`}
           >
-            <div className={`p-2 rounded-full ${expression.color} text-white`}>
+            <div className={`p-2 rounded-full ${expression.color} text-white shadow-sm group-hover:scale-110 transition-transform`}>
               {expression.icon}
             </div>
             <div className="text-left">
-              <div className="font-medium text-gray-800">{expression.label}</div>
-              <div className="text-xs text-gray-500">
+              <div className="font-medium text-gray-800 text-sm">{expression.label}</div>
+              <div className="text-[10px] text-gray-500">
                 强度: {Math.round(expression.intensity * 100)}%
               </div>
             </div>

@@ -349,31 +349,35 @@ export default function AdvancedDigitalHumanPage() {
               )}
               
               {activeTab === 'chat' && (
-                <div className="bg-white rounded-lg shadow-lg p-4 space-y-4">
-                  <div className="h-48 overflow-y-auto bg-gray-50 rounded-lg p-3 space-y-2 text-sm">
+                <div className="bg-white/80 backdrop-blur-md rounded-xl shadow-lg p-4 space-y-4 border border-white/20 transition-all duration-300">
+                  <div className="h-[400px] overflow-y-auto bg-gray-50/50 rounded-xl p-4 space-y-3 text-sm border border-gray-100 custom-scrollbar">
                     {chatMessages.length === 0 && (
-                      <div className="text-gray-400 text-center">暂无对话，先输入点什么吧。</div>
+                      <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2">
+                        <span className="text-2xl">👋</span>
+                        <p>暂无对话，试着和我说点什么吧</p>
+                      </div>
                     )}
                     {chatMessages.map((msg) => (
                       <div
                         key={msg.id}
-                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
                       >
                         <div
-                          className={`max-w-[80%] px-3 py-2 rounded-lg ${
+                          className={`max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed ${
                             msg.role === 'user'
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-200 text-gray-800'
+                              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-br-none'
+                              : 'bg-white text-gray-800 border border-gray-100 rounded-bl-none'
                           }`}
                         >
                           {msg.text}
                         </div>
                       </div>
                     ))}
+                    <div ref={messagesEndRef} />
                   </div>
 
-                  <div className="flex space-x-2">
-                    <input
+                  <div className="flex items-end space-x-2 bg-white p-2 rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all shadow-sm">
+                    <textarea
                       value={chatInput}
                       onChange={(e) => setChatInput(e.target.value)}
                       onKeyDown={(e) => {
@@ -382,15 +386,22 @@ export default function AdvancedDigitalHumanPage() {
                           void handleChatSend();
                         }
                       }}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      className="flex-1 px-2 py-2 bg-transparent border-none focus:ring-0 text-sm resize-none max-h-24 min-h-[40px]"
                       placeholder="输入要对数字人说的话..."
+                      rows={1}
                     />
                     <button
                       onClick={() => void handleChatSend()}
-                      disabled={isChatLoading}
-                      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg text-sm transition-colors"
+                      disabled={isChatLoading || !chatInput.trim()}
+                      className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors shadow-md hover:shadow-lg flex-shrink-0"
                     >
-                      {isChatLoading ? '发送中...' : '发送'}
+                      {isChatLoading ? (
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                          <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                        </svg>
+                      )}
                     </button>
                   </div>
                 </div>
