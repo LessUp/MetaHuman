@@ -13,6 +13,11 @@ class DialogueService:
   def __init__(self) -> None:
     self.api_key = os.getenv("OPENAI_API_KEY")
     self.model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+    self._session_messages: dict[str, list[dict[str, str]]] = {}
+    try:
+      self.max_session_messages = int(os.getenv("DIALOGUE_MAX_SESSION_MESSAGES", "10"))
+    except ValueError:
+      self.max_session_messages = 10
 
   async def generate_reply(
     self,
@@ -44,13 +49,23 @@ class DialogueService:
       "不要输出 JSON 以外的任何文字。"
     )
 
+    history_messages: list[dict[str, str]] = []
+    if session_id:
+      history_messages = self._get_session_messages(session_id)
+
     messages: list[dict[str, str]] = [
       {"role": "system", "content": system_prompt},
+    ]
+
+    if history_messages:
+      messages.extend(history_messages)
+
+    messages.append(
       {
         "role": "user",
         "content": user_text,
-      },
-    ]
+      }
+    )
 
     if meta:
       messages.append(
@@ -97,6 +112,15 @@ class DialogueService:
       if action not in {"idle", "wave", "greet", "think", "nod", "shakeHead", "dance", "speak"}:
         action = "idle"
 
+      if session_id:
+        self._append_session_messages(
+          session_id,
+          [
+            {"role": "user", "content": user_text},
+            {"role": "assistant", "content": reply_text},
+          ],
+        )
+
       return {
         "replyText": reply_text,
         "emotion": emotion,
@@ -110,6 +134,22 @@ class DialogueService:
         "emotion": "neutral",
         "action": "idle",
       }
+
+  def _get_session_messages(self, session_id: str) -> list[dict[str, str]]:
+    return self._session_messages.get(session_id, [])
+
+  def _append_session_messages(
+    self,
+    session_id: str,
+    new_messages: list[dict[str, str]],
+  ) -> None:
+    if not session_id:
+      return
+    history = self._session_messages.get(session_id, [])
+    history.extend(new_messages)
+    if len(history) > self.max_session_messages:
+      history = history[-self.max_session_messages :]
+    self._session_messages[session_id] = history
 
 
 dialogue_service = DialogueService()

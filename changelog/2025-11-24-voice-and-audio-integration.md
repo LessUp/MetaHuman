@@ -46,3 +46,17 @@
 - 现有基于 `ttsService`/`asrService` 的调用保持兼容；
 - `VoiceInteractionPanel` 现在作为统一语音 UI 层，可以在页面中按需挂载，不会再与全局语音状态产生冲突；
 - 行为状态 `currentBehavior` 与 `BehaviorControlPanel`、`DigitalHumanEngine` 已经贯通，为后续接入 LLM 决策（根据对话内容自动切换行为）打下基础。
+
+## 后端对话大脑增强（OpenAI + 会话记忆）
+
+- `server/app/services/dialogue.py` 中的 `DialogueService` 新增会话级内存：
+  - 在实例上维护 `_session_messages: dict[str, list[dict[str, str]]]`。
+  - 通过环境变量 `DIALOGUE_MAX_SESSION_MESSAGES` 控制每个会话保留的历史消息条数（默认 10），超出时仅保留最近若干条。
+- `generate_reply` 调用 LLM 时现在会：
+  - 在 system prompt 之后拼接当前 `session_id` 的历史消息，再追加本轮用户输入。
+  - 若传入 `meta`，继续以额外的 system 消息形式附加在最后。
+- 在成功解析 LLM 返回并通过校验后：
+  - 将本轮 `{role: 'user', content: user_text}` 与 `{role: 'assistant', content: replyText}` 追加写入对应 `session_id` 的会话历史。
+- 行为保持：
+  - 当环境变量 `OPENAI_API_KEY` 缺失时仍然走本地 Mock 回退逻辑，不写入会话历史；
+  - 当调用 LLM 发生异常时仍然返回降级提示文本，并且不会污染原有会话历史。
