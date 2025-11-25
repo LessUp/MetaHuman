@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, Play, Square } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Mic, MicOff, Volume2, VolumeX, Play } from 'lucide-react';
+import { useDigitalHumanStore } from '../store/digitalHumanStore';
+import { ttsService } from '../core/audio/audioService';
 
 interface VoiceInteractionPanelProps {
   onTranscript: (text: string) => void;
@@ -73,7 +75,6 @@ export default function VoiceInteractionPanel({ onTranscript, onSpeak }: VoiceIn
     recognitionRef.current.lang = 'zh-CN';
     
     recognitionRef.current.onstart = () => {
-      console.log('语音识别开始');
       setTranscript('');
     };
     
@@ -97,12 +98,11 @@ export default function VoiceInteractionPanel({ onTranscript, onSpeak }: VoiceIn
     };
     
     recognitionRef.current.onerror = (event: any) => {
-      console.error('语音识别错误:', event.error);
       setIsRecording(false);
+      useDigitalHumanStore.getState().setError(`语音识别错误: ${event.error}`);
     };
     
     recognitionRef.current.onend = () => {
-      console.log('语音识别结束');
       setIsRecording(false);
     };
   };
@@ -135,15 +135,15 @@ export default function VoiceInteractionPanel({ onTranscript, onSpeak }: VoiceIn
     utterance.lang = 'zh-CN';
     
     utterance.onstart = () => {
-      console.log('语音合成开始');
+      useDigitalHumanStore.getState().setSpeaking(true);
     };
     
     utterance.onend = () => {
-      console.log('语音合成结束');
+      useDigitalHumanStore.getState().setSpeaking(false);
     };
     
-    utterance.onerror = (event) => {
-      console.error('语音合成错误:', event);
+    utterance.onerror = () => {
+      useDigitalHumanStore.getState().setSpeaking(false);
     };
     
     synthRef.current.speak(utterance);

@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import DigitalHumanViewer from '../components/DigitalHumanViewer';
 import ControlPanel from '../components/ControlPanel';
 import { useDigitalHumanStore } from '../store/digitalHumanStore';
 import { ttsService, asrService } from '../core/audio/audioService';
 import { digitalHumanEngine } from '../core/avatar/DigitalHumanEngine';
 import { Toaster, toast } from 'sonner';
+import { Wifi, WifiOff } from 'lucide-react';
 
 export default function DigitalHumanPage() {
   const {
@@ -13,6 +14,8 @@ export default function DigitalHumanPage() {
     isMuted,
     autoRotate,
     isSpeaking,
+    connectionStatus,
+    currentBehavior,
     setRecording,
     toggleMute,
     toggleAutoRotate
@@ -21,29 +24,10 @@ export default function DigitalHumanPage() {
   const [modelLoaded, setModelLoaded] = useState(false);
 
   // 处理模型加载完成
-  const handleModelLoad = (model: any) => {
-    console.log('数字人模型加载完成:', model);
-    console.log('当前modelLoaded状态:', modelLoaded);
-    
-    // 使用函数式更新确保状态正确更新
-    setModelLoaded(prevState => {
-      console.log('从状态', prevState, '更新到', true);
-      return true;
-    });
-    
-    console.log('状态更新已调用，检查UI是否刷新...');
-  };
-
-  // 监听modelLoaded状态变化
-  useEffect(() => {
-    console.log('modelLoaded状态已更新为:', modelLoaded);
-  }, [modelLoaded]);
-
-  // 添加一个测试按钮来手动触发状态更新
-  const testStateUpdate = () => {
-    console.log('手动测试状态更新');
-    setModelLoaded(prev => !prev);
-  };
+  const handleModelLoad = useCallback((model: any) => {
+    setModelLoaded(true);
+    toast.success('数字人模型加载完成');
+  }, []);
 
   // 处理播放/暂停
   const handlePlayPause = () => {
@@ -80,38 +64,30 @@ export default function DigitalHumanPage() {
   };
 
   // 处理语音命令
-  const handleVoiceCommand = (command: string) => {
-    console.log('执行语音命令:', command);
-    
-    // 立即显示点击反馈
-    alert(`点击了: ${command}`);
-    
-    // 检查浏览器是否支持语音合成
-    if (!('speechSynthesis' in window)) {
-      console.error('浏览器不支持语音合成');
-      toast.error('浏览器不支持语音合成功能');
-      return;
-    }
-    
-    // 添加视觉反馈
-    const message = `正在执行命令：${command}`;
-    console.log('TTS消息:', message);
-    
-    // 显示toast通知
+  const handleVoiceCommand = useCallback((command: string) => {
     toast.success(`执行命令: ${command}`);
     
-    // 语音命令处理已经在ASRService中实现
-    try {
-      // 添加延迟以确保用户交互被正确识别
-      setTimeout(() => {
-        ttsService.speak(message);
-        console.log('TTS命令发送成功');
-      }, 100);
-    } catch (error) {
-      console.error('TTS执行失败:', error);
-      toast.error('语音合成失败');
+    // 根据命令执行不同操作
+    switch (command) {
+      case '打招呼':
+        asrService.performGreeting();
+        break;
+      case '跳舞':
+        asrService.performDance();
+        break;
+      case '说话':
+        ttsService.speak('您好！有什么可以帮助您的吗？');
+        break;
+      case '表情':
+        const expressions = ['smile', 'surprise', 'laugh'];
+        const randomExpr = expressions[Math.floor(Math.random() * expressions.length)];
+        digitalHumanEngine.setExpression(randomExpr);
+        setTimeout(() => digitalHumanEngine.setExpression('neutral'), 3000);
+        break;
+      default:
+        ttsService.speak(`收到命令: ${command}`);
     }
-  };
+  }, []);
 
   // 组件卸载时清理
   useEffect(() => {
@@ -179,13 +155,14 @@ export default function DigitalHumanPage() {
                     Three.js 渲染引擎 | WebGL
                   </div>
                   
-                  {/* 测试按钮 */}
-                  <button 
-                    onClick={testStateUpdate}
-                    className="ml-4 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
-                  >
-                    测试状态
-                  </button>
+                  {/* 连接状态 */}
+                  <div className="flex items-center space-x-1">
+                    {connectionStatus === 'connected' ? (
+                      <Wifi className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <WifiOff className="w-4 h-4 text-red-500" />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

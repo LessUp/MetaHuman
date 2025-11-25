@@ -24,8 +24,7 @@ export default function BehaviorControlPanel({ currentBehavior, onBehaviorChange
   });
 
   const [isAutoMode, setIsAutoMode] = useState(false);
-  const [decisionInterval, setDecisionInterval] = useState(3000);
-  const [learningRate, setLearningRate] = useState(0.1);
+  const [decisionInterval] = useState(3000);
 
   const behaviors = [
     {

@@ -139,12 +139,10 @@ export const useDigitalHumanStore = create<DigitalHumanState>((set, get) => ({
   // 控制方法
   play: () => {
     set({ isPlaying: true });
-    console.log('数字人播放');
   },
   
   pause: () => {
     set({ isPlaying: false });
-    console.log('数字人暂停');
   },
   
   reset: () => {
@@ -158,35 +156,29 @@ export const useDigitalHumanStore = create<DigitalHumanState>((set, get) => ({
       error: null,
       lastErrorTime: null
     });
-    console.log('数字人重置');
   },
   
   startRecording: () => {
     set({ isRecording: true });
-    console.log('开始录音');
-    
-    // 模拟录音超时
+    // 录音超时保护
     setTimeout(() => {
       if (get().isRecording) {
         get().stopRecording();
       }
-    }, 10000); // 10秒后自动停止
+    }, 30000); // 30秒后自动停止
   },
   
   stopRecording: () => {
     set({ isRecording: false });
-    console.log('停止录音');
   },
   
   toggleMute: () => {
     const { isMuted } = get();
     set({ isMuted: !isMuted });
-    console.log(`音频${isMuted ? '取消静音' : '静音'}`);
   },
   
   toggleAutoRotate: () => {
     const { autoRotate } = get();
     set({ autoRotate: !autoRotate });
-    console.log(`自动旋转${autoRotate ? '关闭' : '开启'}`);
   }
 }));
