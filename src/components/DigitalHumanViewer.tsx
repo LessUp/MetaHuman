@@ -75,9 +75,9 @@ function CyberAvatar() {
     }
 
     // Expressions
-    if (leftEyeRef.current && rightEyeRef.current) {
+    if (leftEyeRef.current?.scale && rightEyeRef.current?.scale) {
       let scaleY = 1;
-      
+
       // Blink Logic
       const blink = Math.sin(t * 3);
       if (blink > 0.98 || currentExpression === 'blink') {
@@ -96,7 +96,7 @@ function CyberAvatar() {
     }
 
     // Rings Animation (Enhanced for Motion)
-    if (ringsRef.current) {
+    if (ringsRef.current?.rotation) {
       let ringSpeed = 0.2;
       let ringTilt = 0;
       let ringWobble = 0;
@@ -229,10 +229,28 @@ export default function DigitalHumanViewer({
   }, [onModelLoad]);
 
   return (
-    <div className="w-full h-full bg-transparent">
+    <div className="w-full h-full bg-transparent space-y-4">
       <Canvas shadows dpr={[1, 2]}>
         <Scene autoRotate={autoRotate} />
       </Canvas>
+
+      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-4 space-y-3 text-white">
+        <h2 className="text-lg font-semibold">数字人控制</h2>
+        <div className="grid grid-cols-1 gap-2 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-white/70">模型状态:</span>
+            <span className="text-green-400">已加载</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-white/70">渲染引擎:</span>
+            <span className="text-blue-300">Three.js</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-white/70">自动旋转:</span>
+            <span className="text-white">{autoRotate ? '开启' : '关闭'}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

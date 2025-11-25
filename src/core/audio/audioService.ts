@@ -104,6 +104,64 @@ export class TTSService {
       this.synth.speak(utterance);
     });
   }
+
+  getVoices() {
+    return this.voices;
+  }
+
+  speakWithOptions(
+    text: string,
+    options: { lang?: string; rate?: number; pitch?: number; volume?: number; voiceName?: string } = {}
+  ) {
+    const {
+      lang = 'zh-CN',
+      rate = 1.0,
+      pitch = 1.0,
+      volume = 0.8,
+      voiceName,
+    } = options;
+
+    if (this.synth.speaking) {
+      this.synth.cancel();
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = rate;
+    utterance.pitch = pitch;
+    utterance.volume = volume;
+    
+    // 选择中文语音或指定语音
+    let selectedVoice: SpeechSynthesisVoice | undefined;
+    if (voiceName) {
+      selectedVoice = this.voices.find((voice) => voice.name === voiceName);
+    }
+    if (!selectedVoice) {
+      selectedVoice = this.voices.find(voice => voice.lang.includes('zh'));
+    }
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+    }
+    
+    utterance.onstart = () => {
+      useDigitalHumanStore.getState().setSpeaking(true);
+      useDigitalHumanStore.getState().setBehavior('speaking');
+    };
+    
+    utterance.onend = () => {
+      useDigitalHumanStore.getState().setSpeaking(false);
+      useDigitalHumanStore.getState().setBehavior('idle');
+    };
+    
+    utterance.onerror = (event) => {
+      console.error('语音合成错误:', event);
+      useDigitalHumanStore.getState().setSpeaking(false);
+      useDigitalHumanStore.getState().setBehavior('idle');
+      useDigitalHumanStore.getState().setError('语音合成失败');
+    };
+    
+    this.synth.speak(utterance);
+  }
   
   stop(): void {
     this.synth.cancel();
@@ -144,6 +202,8 @@ export class ASRService {
   private config: ASRConfig;
   private sendToBackend: boolean = true;
   private tts: TTSService;
+  private onResultCallback: ((text: string) => void) | null = null;
+  private mode: 'command' | 'dictation' = 'command';
   
   constructor(config: ASRConfig = {}) {
     this.isSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
@@ -206,8 +266,14 @@ export class ASRService {
       
       // 处理最终结果
       if (finalTranscript) {
+        console.log('识别结果:', finalTranscript);
         this.callbacks.onTranscript?.(finalTranscript, true);
-        this.processVoiceInput(finalTranscript);
+        if (this.onResultCallback) {
+          this.onResultCallback(finalTranscript);
+        }
+        if (this.mode === 'command') {
+          this.processVoiceInput(finalTranscript);
+        }
       }
     };
     
@@ -239,12 +305,15 @@ export class ASRService {
     return errorMessages[error] || `语音识别失败: ${error}`;
   }
   
-  start(): boolean {
+  start(options?: { onResult?: (text: string) => void; mode?: 'command' | 'dictation' }): boolean {
     if (!this.isSupported) {
       console.warn('浏览器不支持语音识别');
       useDigitalHumanStore.getState().setError('浏览器不支持语音识别功能，请使用 Chrome 或 Edge 浏览器');
       return false;
     }
+
+    this.onResultCallback = options?.onResult ?? null;
+    this.mode = options?.mode ?? 'command';
     
     try {
       this.recognition.start();
@@ -274,6 +343,8 @@ export class ASRService {
         // 忽略停止错误
       }
     }
+    this.onResultCallback = null;
+    this.mode = 'command';
   }
   
   abort(): void {

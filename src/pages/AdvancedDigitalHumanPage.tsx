@@ -169,6 +169,7 @@ export default function AdvancedDigitalHumanPage() {
         sessionId: sessionId,
         meta: { timestamp: Date.now() }
       });
+      console.debug('LLM response', { emotion: res.emotion, action: res.action });
       
       // 添加助手消息到 store
       addChatMessage('assistant', res.replyText);
@@ -206,6 +207,7 @@ export default function AdvancedDigitalHumanPage() {
   }, [chatInput, isChatLoading, sessionId, isMuted, addChatMessage]);
 
   const handleToggleRecording = useCallback(() => {
+    console.debug('Toggle recording', { from: isRecording });
     if (isRecording) {
       asrService.stop();
       setRecording(false);
@@ -341,7 +343,7 @@ export default function AdvancedDigitalHumanPage() {
 
           {/* Navigation Tabs */}
           <div className="flex space-x-1 bg-white/5 p-1 rounded-lg mb-6 overflow-x-auto">
-            {['basic', 'expression', 'behavior', 'vision'].map(tab => (
+            {['basic', 'expression', 'behavior', 'vision', 'voice'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -383,10 +385,10 @@ export default function AdvancedDigitalHumanPage() {
             {activeTab === 'behavior' && (
               <BehaviorControlPanel
                 currentBehavior={currentBehavior}
-                onBehaviorChange={(b, p) => handleBehaviorChange(b)}
+                onBehaviorChange={handleBehaviorChange}
               />
             )}
-             {activeTab === 'vision' && (
+            {activeTab === 'vision' && (
                <div className="text-sm text-gray-400 p-4 border border-white/10 rounded-xl bg-white/5">
                   Vision Mirror Module requires camera access.
                   <VisionMirrorPanel 
@@ -406,6 +408,16 @@ export default function AdvancedDigitalHumanPage() {
                     }} 
                   />
                </div>
+            )}
+            {activeTab === 'voice' && (
+              <div className="space-y-4">
+                <VoiceInteractionPanel
+                  onTranscript={(text) => handleChatSend(text)}
+                  onSpeak={(text) => {
+                    console.log('VoiceInteractionPanel TTS test:', text);
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -456,7 +468,7 @@ export default function AdvancedDigitalHumanPage() {
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !isChatLoading && !isRecording && handleChatSend()}
             placeholder={isLoading ? '思考中...' : isRecording ? '正在聆听...' : '输入消息与数字人互动...'}
             disabled={isLoading || isRecording}
             className="flex-1 bg-transparent border-none outline-none text-white placeholder-white/30 text-sm h-10 disabled:cursor-not-allowed"
@@ -465,7 +477,7 @@ export default function AdvancedDigitalHumanPage() {
           <div className="flex items-center gap-2 pr-1">
             <button
               onClick={handleToggleRecording}
-              disabled={isLoading}
+              disabled={isLoading || isChatLoading}
               className={`p-3 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isRecording 
                   ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' 
