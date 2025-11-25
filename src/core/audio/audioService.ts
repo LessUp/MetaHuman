@@ -182,7 +182,6 @@ export class ASRService {
     this.recognition.maxAlternatives = this.config.maxAlternatives;
     
     this.recognition.onstart = () => {
-      console.log('语音识别开始');
       useDigitalHumanStore.getState().setBehavior('listening');
       this.callbacks.onStart?.();
     };
@@ -207,7 +206,6 @@ export class ASRService {
       
       // 处理最终结果
       if (finalTranscript) {
-        console.log('识别结果:', finalTranscript);
         this.callbacks.onTranscript?.(finalTranscript, true);
         this.processVoiceInput(finalTranscript);
       }
@@ -223,7 +221,6 @@ export class ASRService {
     };
     
     this.recognition.onend = () => {
-      console.log('语音识别结束');
       useDigitalHumanStore.getState().setRecording(false);
       useDigitalHumanStore.getState().setBehavior('idle');
       this.callbacks.onEnd?.();

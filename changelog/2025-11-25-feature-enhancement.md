@@ -151,6 +151,35 @@
 
 ---
 
+## 自动检查修复 (第二轮)
+
+### 修复内容
+
+1. **DigitalHumanPage.tsx**
+   - 移除所有 `console.log` 调试语句
+   - 移除 `alert()` 调用，改用 toast 提示
+   - 移除测试按钮
+   - 实现 `handleVoiceCommand` 真正功能
+   - 集成 `connectionStatus` 状态显示
+
+2. **BehaviorControlPanel.tsx**
+   - 移除未使用的 `learningRate` 变量
+   - 移除未使用的 `setDecisionInterval`
+
+3. **ExpressionControlPanel.tsx**
+   - 移除未使用的 `customColor` 变量
+
+4. **VoiceInteractionPanel.tsx**
+   - 移除 `console.log` 调试语句
+   - 集成 `useDigitalHumanStore` 状态同步
+   - 语音状态与全局 store 同步
+
+5. **digitalHumanStore.ts**
+   - 移除所有 `console.log` 调试语句
+   - 录音超时从 10 秒改为 30 秒
+
+---
+
 ## 后续优化建议
 
 1. 添加会话历史导出功能
