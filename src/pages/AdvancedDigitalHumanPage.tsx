@@ -82,25 +82,77 @@ export default function AdvancedDigitalHumanPage() {
     };
   }, [error, clearError]);
 
-  // --- Event Handlers ---
-  const handleModelLoad = (model: any) => {
-    toast.success('数字人接口已上线');
-  };
+  // 键盘快捷键支持
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 如果在输入框中，不处理快捷键
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
 
-  const handlePlayPause = () => {
+      switch (e.key.toLowerCase()) {
+        case ' ': // 空格：播放/暂停
+          e.preventDefault();
+          handlePlayPause();
+          break;
+        case 'r': // R：重置
+          if (!e.ctrlKey && !e.metaKey) {
+            handleReset();
+          }
+          break;
+        case 'm': // M：静音切换
+          toggleMute();
+          toast.info(isMuted ? '已取消静音' : '已静音');
+          break;
+        case 'v': // V：录音切换
+          handleToggleRecording();
+          break;
+        case 's': // S：设置面板
+          if (!e.ctrlKey && !e.metaKey) {
+            setShowSettings(prev => !prev);
+          }
+          break;
+        case 'escape': // ESC：关闭设置面板
+          setShowSettings(false);
+          break;
+        case '1': // 1：打招呼
+          handleVoiceCommand('打招呼');
+          break;
+        case '2': // 2：跳舞
+          handleVoiceCommand('跳舞');
+          break;
+        case '3': // 3：说话
+          handleVoiceCommand('说话');
+          break;
+        case '4': // 4：表情
+          handleVoiceCommand('表情');
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMuted, toggleMute]);
+
+  // --- Event Handlers ---
+  const handleModelLoad = useCallback((model: unknown) => {
+    toast.success('数字人接口已上线');
+  }, []);
+
+  const handlePlayPause = useCallback(() => {
     if (isPlaying) {
       digitalHumanEngine.pause();
-      toast.info('Paused');
+      toast.info('已暂停');
     } else {
       digitalHumanEngine.play();
-      toast.success('Resumed');
+      toast.success('已播放');
     }
-  };
+  }, [isPlaying]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     digitalHumanEngine.reset();
-    toast.info('System Reset');
-  };
+    toast.info('系统已重置');
+  }, []);
 
   const handleChatSend = useCallback(async (text?: string) => {
     const content = (text ?? chatInput).trim();

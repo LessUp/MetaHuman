@@ -1,5 +1,6 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, Settings, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, RotateCcw, Settings, Mic, MicOff, Volume2, VolumeX, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { useDigitalHumanStore, type ConnectionStatus } from '../store/digitalHumanStore';
 
 interface ControlPanelProps {
   isPlaying: boolean;
@@ -14,6 +15,14 @@ interface ControlPanelProps {
   onVoiceCommand: (command: string) => void;
 }
 
+// 连接状态显示配置
+const connectionStatusConfig: Record<ConnectionStatus, { label: string; color: string; icon: React.ReactNode }> = {
+  connected: { label: '在线', color: 'text-green-400', icon: <Wifi className="w-3 h-3" /> },
+  connecting: { label: '连接中', color: 'text-yellow-400', icon: <Loader2 className="w-3 h-3 animate-spin" /> },
+  disconnected: { label: '离线', color: 'text-gray-400', icon: <WifiOff className="w-3 h-3" /> },
+  error: { label: '错误', color: 'text-red-400', icon: <WifiOff className="w-3 h-3" /> },
+};
+
 export default function ControlPanel({
   isPlaying,
   isRecording,
@@ -26,6 +35,10 @@ export default function ControlPanel({
   onToggleAutoRotate,
   onVoiceCommand
 }: ControlPanelProps) {
+  // 从 store 获取状态
+  const { connectionStatus, isSpeaking, currentBehavior } = useDigitalHumanStore();
+  const statusConfig = connectionStatusConfig[connectionStatus];
+  
   const voiceCommands = [
     { command: '打招呼', label: '👋 Say Hello' },
     { command: '跳舞', label: '💃 Dance' },
@@ -127,21 +140,30 @@ export default function ControlPanel({
 
       {/* System Status */}
       <div className="bg-black/40 rounded-xl p-4 space-y-3 border border-white/5">
-        <h3 className="text-xs font-semibold text-white/40 uppercase">Diagnostics</h3>
+        <h3 className="text-xs font-semibold text-white/40 uppercase">系统状态</h3>
         <div className="text-xs space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-white/60">Connection</span>
-            <span className="flex items-center text-green-400 gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Online
+            <span className="text-white/60">连接状态</span>
+            <span className={`flex items-center gap-1.5 ${statusConfig.color}`}>
+              {statusConfig.icon}
+              {statusConfig.label}
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-white/60">Speech Engine</span>
-            <span className="text-blue-400">Ready</span>
+            <span className="text-white/60">语音引擎</span>
+            <span className={isSpeaking ? 'text-green-400' : 'text-blue-400'}>
+              {isSpeaking ? '播放中' : '就绪'}
+            </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-white/60">Latency</span>
-            <span className="text-white/40 font-mono">24ms</span>
+            <span className="text-white/60">当前行为</span>
+            <span className="text-purple-400 font-mono uppercase">{currentBehavior}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-white/60">录音状态</span>
+            <span className={isRecording ? 'text-red-400' : 'text-white/40'}>
+              {isRecording ? '录音中' : '待机'}
+            </span>
           </div>
         </div>
       </div>
