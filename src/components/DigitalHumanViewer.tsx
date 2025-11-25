@@ -169,12 +169,12 @@ function CyberAvatar() {
         </group>
 
         {/* --- EARS / HEADPHONES --- */}
-        <mesh position={[0.8, 0, 0]}>
-           <cylinderGeometry args={[0.2, 0.2, 0.3, 32]} rotation={[0, 0, Math.PI/2]} />
+        <mesh position={[0.8, 0, 0]} rotation={[0, 0, Math.PI/2]}>
+           <cylinderGeometry args={[0.2, 0.2, 0.3, 32]} />
            <meshStandardMaterial color="#475569" />
         </mesh>
-        <mesh position={[-0.8, 0, 0]}>
-           <cylinderGeometry args={[0.2, 0.2, 0.3, 32]} rotation={[0, 0, Math.PI/2]} />
+        <mesh position={[-0.8, 0, 0]} rotation={[0, 0, Math.PI/2]}>
+           <cylinderGeometry args={[0.2, 0.2, 0.3, 32]} />
            <meshStandardMaterial color="#475569" />
         </mesh>
 

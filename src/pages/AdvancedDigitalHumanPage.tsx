@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import DigitalHumanViewer from '../components/DigitalHumanViewer';
 import ControlPanel from '../components/ControlPanel';
 import VoiceInteractionPanel from '../components/VoiceInteractionPanel';
@@ -8,9 +8,9 @@ import BehaviorControlPanel from '../components/BehaviorControlPanel';
 import { useDigitalHumanStore } from '../store/digitalHumanStore';
 import { ttsService, asrService } from '../core/audio/audioService';
 import { digitalHumanEngine } from '../core/avatar/DigitalHumanEngine';
-import { sendUserInput } from '../core/dialogue/dialogueService';
+import { sendUserInput, checkServerHealth } from '../core/dialogue/dialogueService';
 import { Toaster, toast } from 'sonner';
-import { Mic, MessageSquare, Settings, Maximize2, Minimize2, Globe, Activity, X, Radio } from 'lucide-react';
+import { Mic, MessageSquare, Settings, Activity, X, Radio, AlertCircle, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 export default function AdvancedDigitalHumanPage() {
   const {
@@ -21,29 +21,70 @@ export default function AdvancedDigitalHumanPage() {
     currentExpression,
     currentBehavior,
     isSpeaking,
+    isLoading,
+    error,
+    connectionStatus,
+    chatHistory,
+    sessionId,
     setRecording,
     toggleMute,
-    toggleAutoRotate
+    toggleAutoRotate,
+    addChatMessage,
+    clearError,
+    setConnectionStatus,
+    initSession
   } = useDigitalHumanStore();
 
   const [showSettings, setShowSettings] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
   const [chatInput, setChatInput] = useState('');
-  const [chatMessages, setChatMessages] = useState<{ id: number; role: 'user' | 'assistant'; text: string }[]>([]);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // 滚动到底部
   useEffect(() => {
     scrollToBottom();
-  }, [chatMessages]);
+  }, [chatHistory]);
 
-  // --- Event Handlers (Preserved from original) ---
+  // 初始化：检查服务器连接
+  useEffect(() => {
+    const checkConnection = async () => {
+      const isHealthy = await checkServerHealth();
+      setConnectionStatus(isHealthy ? 'connected' : 'disconnected');
+      if (!isHealthy) {
+        toast.warning('服务器连接不稳定，部分功能可能受限');
+      }
+    };
+    checkConnection();
+    
+    // 定期检查连接状态
+    const interval = setInterval(checkConnection, 30000);
+    return () => clearInterval(interval);
+  }, [setConnectionStatus]);
+
+  // 自动清除错误
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+      errorTimeoutRef.current = setTimeout(() => {
+        clearError();
+      }, 5000);
+    }
+    return () => {
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+    };
+  }, [error, clearError]);
+
+  // --- Event Handlers ---
   const handleModelLoad = (model: any) => {
-    toast.success('Digital Interface Online');
+    toast.success('数字人接口已上线');
   };
 
   const handlePlayPause = () => {
@@ -61,57 +102,118 @@ export default function AdvancedDigitalHumanPage() {
     toast.info('System Reset');
   };
 
-  const handleChatSend = async (text?: string) => {
+  const handleChatSend = useCallback(async (text?: string) => {
     const content = (text ?? chatInput).trim();
-    if (!content) return;
+    if (!content || isChatLoading) return;
 
-    const userMessage = { id: Date.now(), role: 'user' as const, text: content };
-    setChatMessages((prev) => [...prev, userMessage]);
+    // 添加用户消息到 store
+    addChatMessage('user', content);
     if (!text) setChatInput('');
 
     setIsChatLoading(true);
     try {
-      const res = await sendUserInput({ userText: content, sessionId: 'demo-session' });
-      const assistantMessage = { id: Date.now() + 1, role: 'assistant' as const, text: res.replyText };
-      setChatMessages((prev) => [...prev, assistantMessage]);
+      const res = await sendUserInput({ 
+        userText: content, 
+        sessionId: sessionId,
+        meta: { timestamp: Date.now() }
+      });
+      
+      // 添加助手消息到 store
+      addChatMessage('assistant', res.replyText);
 
+      // 应用情感和表情
       if (res.emotion) {
         digitalHumanEngine.setEmotion(res.emotion);
-        if (res.emotion === 'happy') digitalHumanEngine.setExpression('smile');
-        else if (res.emotion === 'surprised') digitalHumanEngine.setExpression('surprise');
-        else digitalHumanEngine.setExpression('neutral');
+        const expressionMap: Record<string, string> = {
+          'happy': 'smile',
+          'surprised': 'surprise',
+          'sad': 'sad',
+          'angry': 'angry',
+          'neutral': 'neutral'
+        };
+        digitalHumanEngine.setExpression(expressionMap[res.emotion] || 'neutral');
       }
 
-      if (res.action && res.action !== 'idle') digitalHumanEngine.playAnimation(res.action);
-      if (res.replyText) ttsService.speak(res.replyText);
+      // 执行动作
+      if (res.action && res.action !== 'idle') {
+        digitalHumanEngine.playAnimation(res.action);
+      }
+      
+      // 语音播放（非静音状态）
+      if (res.replyText && !isMuted) {
+        await ttsService.speak(res.replyText);
+      }
 
-    } catch (error) {
-      console.error(error);
-      toast.error('Connection Error');
+    } catch (err: any) {
+      console.error('发送消息失败:', err);
+      // 错误已在 dialogueService 中处理，这里只需通知
+      toast.error(err.message || '发送失败，请重试');
     } finally {
       setIsChatLoading(false);
     }
-  };
+  }, [chatInput, isChatLoading, sessionId, isMuted, addChatMessage]);
 
-  const handleToggleRecording = () => {
+  const handleToggleRecording = useCallback(() => {
     if (isRecording) {
       asrService.stop();
       setRecording(false);
-      toast.info('Recording Stopped');
+      toast.info('录音已停止');
     } else {
-      asrService.start();
-      toast.success('Listening...');
+      const started = asrService.start();
+      if (started) {
+        toast.success('正在聆听...');
+      }
     }
-  };
+  }, [isRecording, setRecording]);
 
-  const handleExpressionChange = (expression: string, intensity: number) => {
+  const handleExpressionChange = useCallback((expression: string, intensity: number) => {
     digitalHumanEngine.setExpression(expression);
     digitalHumanEngine.setExpressionIntensity(intensity);
-  };
+  }, []);
 
-  const handleBehaviorChange = (behavior: string) => {
+  const handleBehaviorChange = useCallback((behavior: string) => {
     digitalHumanEngine.playAnimation(behavior);
-  };
+  }, []);
+
+  // Quick Actions 处理
+  const handleVoiceCommand = useCallback((command: string) => {
+    switch (command) {
+      case '打招呼':
+        asrService.performGreeting();
+        toast.success('执行打招呼动作');
+        break;
+      case '跳舞':
+        asrService.performDance();
+        toast.success('开始跳舞');
+        break;
+      case '说话':
+        handleChatSend('你好，请自我介绍一下');
+        break;
+      case '表情':
+        const expressions = ['smile', 'surprise', 'laugh'];
+        const randomExpr = expressions[Math.floor(Math.random() * expressions.length)];
+        digitalHumanEngine.setExpression(randomExpr);
+        toast.success(`切换到 ${randomExpr} 表情`);
+        setTimeout(() => digitalHumanEngine.setExpression('neutral'), 3000);
+        break;
+      default:
+        // 将命令作为对话发送
+        handleChatSend(command);
+    }
+  }, [handleChatSend]);
+
+  // 重新连接服务器
+  const handleReconnect = useCallback(async () => {
+    setConnectionStatus('connecting');
+    toast.loading('正在重新连接...');
+    const isHealthy = await checkServerHealth();
+    setConnectionStatus(isHealthy ? 'connected' : 'error');
+    if (isHealthy) {
+      toast.success('连接成功');
+    } else {
+      toast.error('连接失败，请稍后重试');
+    }
+  }, [setConnectionStatus]);
 
   // --- UI Components ---
 
@@ -138,13 +240,30 @@ export default function AdvancedDigitalHumanPage() {
             MetaHuman <span className="text-xs bg-blue-500/20 px-2 py-0.5 rounded text-blue-300 border border-blue-500/30">CORE 1.0</span>
           </h1>
           <div className="mt-2 flex space-x-4 text-xs text-gray-400 font-mono">
-            <span>SYS: <span className="text-green-400">ONLINE</span></span>
-            <span>CPU: <span className="text-blue-400">34%</span></span>
-            <span>MEM: <span className="text-purple-400">1.2GB</span></span>
+            <span className="flex items-center gap-1">
+              {connectionStatus === 'connected' ? (
+                <><Wifi className="w-3 h-3 text-green-400" /> <span className="text-green-400">在线</span></>
+              ) : connectionStatus === 'connecting' ? (
+                <><RefreshCw className="w-3 h-3 text-yellow-400 animate-spin" /> <span className="text-yellow-400">连接中</span></>
+              ) : (
+                <><WifiOff className="w-3 h-3 text-red-400" /> <span className="text-red-400">离线</span></>
+              )}
+            </span>
+            <span>行为: <span className="text-blue-400">{currentBehavior}</span></span>
+            <span>会话: <span className="text-purple-400">{chatHistory.length}条</span></span>
           </div>
         </div>
 
         <div className="pointer-events-auto flex space-x-3">
+          {connectionStatus !== 'connected' && (
+            <button 
+              onClick={handleReconnect}
+              className="p-3 rounded-full bg-yellow-500/20 backdrop-blur-md border border-yellow-500/30 hover:bg-yellow-500/30 transition-all active:scale-95"
+              title="重新连接"
+            >
+              <RefreshCw className={`w-5 h-5 text-yellow-400 ${connectionStatus === 'connecting' ? 'animate-spin' : ''}`} />
+            </button>
+          )}
           <button 
             onClick={() => setShowSettings(!showSettings)}
             className="p-3 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-all active:scale-95"
@@ -198,7 +317,7 @@ export default function AdvancedDigitalHumanPage() {
                     onToggleRecording={handleToggleRecording}
                     onToggleMute={toggleMute}
                     onToggleAutoRotate={toggleAutoRotate}
-                    onVoiceCommand={(cmd) => console.log(cmd)}
+                    onVoiceCommand={handleVoiceCommand}
                   />
                 </div>
               </div>
@@ -244,57 +363,74 @@ export default function AdvancedDigitalHumanPage() {
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-20">
         {/* Chat Bubbles Overlay (Above Dock) */}
         <div className="mb-6 w-full max-h-[40vh] overflow-y-auto space-y-3 pr-4 mask-gradient-bottom custom-scrollbar">
-          {chatMessages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
-            >
-              <div
-                className={`max-w-[80%] px-5 py-3 rounded-2xl text-sm backdrop-blur-md border shadow-xl ${
-                  msg.role === 'user'
-                    ? 'bg-blue-600/80 border-blue-500/50 text-white rounded-br-none'
-                    : 'bg-white/10 border-white/10 text-gray-100 rounded-bl-none'
-                }`}
-              >
-                {msg.text}
-              </div>
+          {chatHistory.length === 0 ? (
+            <div className="text-center text-white/30 text-sm py-8">
+              发送消息或使用语音开始对话...
             </div>
-          ))}
+          ) : (
+            chatHistory.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
+              >
+                <div
+                  className={`max-w-[80%] px-5 py-3 rounded-2xl text-sm backdrop-blur-md border shadow-xl ${
+                    msg.role === 'user'
+                      ? 'bg-blue-600/80 border-blue-500/50 text-white rounded-br-none'
+                      : 'bg-white/10 border-white/10 text-gray-100 rounded-bl-none'
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Bar */}
-        <div className="bg-black/60 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 pl-4 flex items-center gap-3 shadow-2xl shadow-blue-900/20 ring-1 ring-white/5">
-          <div className="p-2 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-lg">
-            <Radio className={`w-5 h-5 text-white ${isSpeaking ? 'animate-pulse' : ''}`} />
+        <div className={`bg-black/60 backdrop-blur-2xl border rounded-2xl p-2 pl-4 flex items-center gap-3 shadow-2xl shadow-blue-900/20 ring-1 ring-white/5 transition-colors ${
+          isLoading ? 'border-blue-500/50' : 'border-white/10'
+        }`}>
+          <div className={`p-2 rounded-lg transition-colors ${
+            isLoading ? 'bg-gradient-to-tr from-yellow-500 to-orange-500' : 
+            isSpeaking ? 'bg-gradient-to-tr from-green-500 to-emerald-500' :
+            'bg-gradient-to-tr from-blue-500 to-purple-500'
+          }`}>
+            <Radio className={`w-5 h-5 text-white ${isSpeaking || isLoading ? 'animate-pulse' : ''}`} />
           </div>
           
           <input
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleChatSend()}
-            placeholder="Type a message to interact..."
-            className="flex-1 bg-transparent border-none outline-none text-white placeholder-white/30 text-sm h-10"
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
+            placeholder={isLoading ? '思考中...' : isRecording ? '正在聆听...' : '输入消息与数字人互动...'}
+            disabled={isLoading || isRecording}
+            className="flex-1 bg-transparent border-none outline-none text-white placeholder-white/30 text-sm h-10 disabled:cursor-not-allowed"
           />
 
           <div className="flex items-center gap-2 pr-1">
             <button
               onClick={handleToggleRecording}
-              className={`p-3 rounded-xl transition-all duration-300 ${
+              disabled={isLoading}
+              className={`p-3 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isRecording 
                   ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' 
                   : 'hover:bg-white/10 text-white/70 hover:text-white'
               }`}
+              title={isRecording ? '停止录音' : '开始录音'}
             >
               <Mic className="w-5 h-5" />
             </button>
             
             <button
               onClick={() => handleChatSend()}
-              disabled={!chatInput.trim() && !isChatLoading}
+              disabled={!chatInput.trim() || isChatLoading || isLoading}
               className="p-3 bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-white transition-colors"
+              title="发送消息"
             >
-              {isChatLoading ? (
+              {isChatLoading || isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <MessageSquare className="w-5 h-5" />
@@ -302,6 +438,17 @@ export default function AdvancedDigitalHumanPage() {
             </button>
           </div>
         </div>
+        
+        {/* Error Banner */}
+        {error && (
+          <div className="mt-3 px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-xl flex items-center gap-2 text-red-300 text-sm">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button onClick={clearError} className="p-1 hover:bg-red-500/20 rounded">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
       
       <style>{`

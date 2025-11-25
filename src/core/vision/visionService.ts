@@ -1,53 +1,120 @@
 import { mapFaceToEmotion, UserEmotion } from './visionMapper';
+import { useDigitalHumanStore } from '../../store/digitalHumanStore';
 
 type EmotionCallback = (emotion: UserEmotion) => void;
 type MotionCallback = (motion: 'nod' | 'shakeHead' | 'raiseHand' | 'waveHand') => void;
+type ErrorCallback = (error: string) => void;
+type StatusCallback = (status: VisionStatus) => void;
+
+export type VisionStatus = 'idle' | 'initializing' | 'running' | 'error' | 'no_camera';
+
+export interface VisionServiceCallbacks {
+  onEmotion?: EmotionCallback;
+  onMotion?: MotionCallback;
+  onError?: ErrorCallback;
+  onStatusChange?: StatusCallback;
+}
 
 class VisionService {
   private video: HTMLVideoElement | null = null;
   private stream: MediaStream | null = null;
   private running = false;
+  private status: VisionStatus = 'idle';
   private faceMesh: any = null;
   private pose: any = null;
-  private onEmotion: EmotionCallback | null = null;
-  private onMotion: MotionCallback | null = null;
+  private callbacks: VisionServiceCallbacks = {};
   private yawHistory: number[] = [];
   private pitchHistory: number[] = [];
   private leftWristXHistory: number[] = [];
   private rightWristXHistory: number[] = [];
   private lastUpperBodyMotionTime = 0;
+  private frameCount = 0;
+  private lastFpsTime = 0;
+  private fps = 0;
+
+  getStatus(): VisionStatus {
+    return this.status;
+  }
+
+  getFps(): number {
+    return this.fps;
+  }
+
+  isRunning(): boolean {
+    return this.running;
+  }
+
+  private setStatus(status: VisionStatus): void {
+    this.status = status;
+    this.callbacks.onStatusChange?.(status);
+  }
+
+  private handleError(message: string, error?: any): void {
+    console.error(message, error);
+    this.setStatus('error');
+    this.callbacks.onError?.(message);
+    useDigitalHumanStore.getState().setError(message);
+  }
+
+  // 检查摄像头权限
+  async checkCameraPermission(): Promise<boolean> {
+    try {
+      const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
+      return result.state === 'granted' || result.state === 'prompt';
+    } catch {
+      // 某些浏览器不支持权限查询
+      return true;
+    }
+  }
 
   async start(
     videoElement: HTMLVideoElement,
     onEmotion: EmotionCallback,
     onMotion?: MotionCallback,
-  ): Promise<void> {
+  ): Promise<boolean> {
+    // 如果已经在运行，只更新回调
     if (this.running) {
-      this.onEmotion = onEmotion;
+      this.callbacks.onEmotion = onEmotion;
       if (onMotion) {
-        this.onMotion = onMotion;
+        this.callbacks.onMotion = onMotion;
       }
-      return;
+      return true;
     }
+
     this.video = videoElement;
-    this.onEmotion = onEmotion;
-    this.onMotion = onMotion ?? null;
+    this.callbacks.onEmotion = onEmotion;
+    this.callbacks.onMotion = onMotion;
+    this.setStatus('initializing');
+
+    // 检查浏览器支持
     if (!navigator.mediaDevices?.getUserMedia) {
-      return;
+      this.handleError('浏览器不支持摄像头访问，请使用 Chrome 或 Firefox');
+      this.setStatus('no_camera');
+      return false;
     }
+
+    // 获取摄像头权限
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 },
+        video: { 
+          facingMode: 'user', 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 },
+          frameRate: { ideal: 30 }
+        },
         audio: false,
       });
       this.stream = stream;
       videoElement.srcObject = stream;
       await videoElement.play();
-    } catch (error) {
-      console.error('无法访问摄像头', error);
-      return;
+    } catch (error: any) {
+      const errorMessage = this.getCameraErrorMessage(error);
+      this.handleError(errorMessage, error);
+      this.setStatus('no_camera');
+      return false;
     }
 
+    // 初始化人脸检测模型
     try {
       const mod: any = await import('@mediapipe/face_mesh');
       const FaceMesh = mod.FaceMesh;
@@ -63,19 +130,21 @@ class VisionService {
       });
       this.faceMesh.onResults((results: any) => {
         const emotion = mapFaceToEmotion(results);
-        if (this.onEmotion) {
-          this.onEmotion(emotion);
+        if (this.callbacks.onEmotion) {
+          this.callbacks.onEmotion(emotion);
         }
         const landmarks = results?.multiFaceLandmarks?.[0];
         const motion = this.detectHeadMotion(landmarks);
-        if (motion && this.onMotion) {
-          this.onMotion(motion);
+        if (motion && this.callbacks.onMotion) {
+          this.callbacks.onMotion(motion);
         }
       });
     } catch (error) {
-      console.error('初始化人脸视觉模型失败', error);
+      console.warn('人脸检测模型加载失败，部分功能可能受限', error);
+      // 不阻止继续运行，因为可能只是模型加载问题
     }
 
+    // 初始化姿态检测模型
     try {
       const poseMod: any = await import('@mediapipe/pose');
       const Pose = poseMod.Pose;
@@ -92,24 +161,54 @@ class VisionService {
       });
       this.pose.onResults((results: any) => {
         const upperMotion = this.detectUpperBodyMotion(results);
-        if (upperMotion && this.onMotion) {
-          this.onMotion(upperMotion);
+        if (upperMotion && this.callbacks.onMotion) {
+          this.callbacks.onMotion(upperMotion);
         }
       });
     } catch (error) {
-      console.error('初始化上半身动作模型失败', error);
+      console.warn('姿态检测模型加载失败，手势识别功能将不可用', error);
     }
 
     if (this.faceMesh || this.pose) {
       this.running = true;
+      this.setStatus('running');
+      this.lastFpsTime = performance.now();
       this.loop();
+      return true;
+    } else {
+      this.handleError('视觉模型加载失败，请刷新页面重试');
+      return false;
     }
+  }
+
+  // 获取摄像头错误的友好消息
+  private getCameraErrorMessage(error: any): string {
+    const errorName = error.name || '';
+    const errorMessages: Record<string, string> = {
+      'NotAllowedError': '摄像头权限被拒绝，请在浏览器设置中允许访问摄像头',
+      'NotFoundError': '未检测到摄像头设备，请确保摄像头已连接',
+      'NotReadableError': '摄像头被其他应用占用，请关闭其他使用摄像头的程序',
+      'OverconstrainedError': '摄像头不支持请求的分辨率',
+      'SecurityError': '安全限制：请通过 HTTPS 访问或在本地运行',
+      'AbortError': '摄像头访问被中断',
+    };
+    return errorMessages[errorName] || `摄像头访问失败: ${error.message || errorName}`;
   }
 
   private async loop(): Promise<void> {
     if (!this.running || !this.video || (!this.faceMesh && !this.pose)) {
       return;
     }
+    
+    // FPS 计算
+    this.frameCount++;
+    const now = performance.now();
+    if (now - this.lastFpsTime >= 1000) {
+      this.fps = this.frameCount;
+      this.frameCount = 0;
+      this.lastFpsTime = now;
+    }
+    
     try {
       if (this.faceMesh) {
         await this.faceMesh.send({ image: this.video });
@@ -117,8 +216,11 @@ class VisionService {
       if (this.pose) {
         await this.pose.send({ image: this.video });
       }
-    } catch {
+    } catch (error) {
+      // 单帧错误不影响继续运行
+      console.debug('视觉处理帧错误:', error);
     }
+    
     if (this.running) {
       requestAnimationFrame(() => {
         void this.loop();
@@ -128,6 +230,8 @@ class VisionService {
 
   stop(): void {
     this.running = false;
+    this.setStatus('idle');
+    
     if (this.stream) {
       this.stream.getTracks().forEach((track) => track.stop());
       this.stream = null;
@@ -136,15 +240,17 @@ class VisionService {
       this.video.srcObject = null;
       this.video = null;
     }
+    
     this.faceMesh = null;
     this.pose = null;
-    this.onEmotion = null;
-    this.onMotion = null;
+    this.callbacks = {};
     this.yawHistory = [];
     this.pitchHistory = [];
     this.leftWristXHistory = [];
     this.rightWristXHistory = [];
     this.lastUpperBodyMotionTime = 0;
+    this.frameCount = 0;
+    this.fps = 0;
   }
 
   private computeHeadPose(landmarks: any): { yaw: number; pitch: number } | null {
