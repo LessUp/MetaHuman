@@ -51,8 +51,12 @@ export default function ControlPanel({
       <div className="flex items-center justify-between pb-4 border-b border-white/10">
         <h2 className="text-lg font-medium text-white">控制面板</h2>
         <div className="flex items-center space-x-2">
-          <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-white/20'}`}></div>
-          <span className="text-xs text-white/60">{isRecording ? '录音中' : '空闲'}</span>
+          <div
+            className={`w-2 h-2 rounded-full ${
+              isRecording ? 'bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-white/20'
+            }`}
+          ></div>
+          <span className="text-xs text-white/60">{isRecording ? '录音进行中' : '空闲'}</span>
         </div>
       </div>
 
@@ -140,7 +144,7 @@ export default function ControlPanel({
 
       {/* System Status */}
       <div className="bg-black/40 rounded-xl p-4 space-y-3 border border-white/5">
-        <h3 className="text-xs font-semibold text-white/40 uppercase">系统状态</h3>
+        <h3 className="text-xs font-semibold text-white/40 uppercase">状态信息</h3>
         <div className="text-xs space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-white/60">连接状态</span>

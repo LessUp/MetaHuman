@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, Float, Sparkles, ContactShadows, Html } from '@react-three/drei';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import * as THREE from 'three';
 import { useDigitalHumanStore } from '../store/digitalHumanStore';
 
@@ -25,30 +26,6 @@ function CyberAvatar() {
     currentAnimation,
     expressionIntensity
   } = useDigitalHumanStore();
-
-  // Materials
-  const skinMaterial = useMemo(() => new THREE.MeshPhysicalMaterial({
-    color: '#e2e8f0',
-    metalness: 0.6,
-    roughness: 0.2,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.1,
-  }), []);
-
-  const glowMaterial = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#0ea5e9',
-    emissive: '#0ea5e9',
-    emissiveIntensity: 2,
-    toneMapped: false
-  }), []);
-
-  const ringMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: '#38bdf8',
-    transparent: true,
-    opacity: 0.3,
-    side: THREE.DoubleSide,
-    wireframe: true
-  }), []);
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
@@ -123,21 +100,38 @@ function CyberAvatar() {
       <Float speed={2} rotationIntensity={0.2} floatIntensity={0.5}>
         
         {/* --- HEAD --- */}
-        <mesh ref={headRef} position={[0, 0, 0]} castShadow receiveShadow material={skinMaterial}>
+        <mesh ref={headRef} position={[0, 0, 0]} castShadow receiveShadow>
           {/* Main Head Shape - A smooth capsule/sphere hybrid */}
           <sphereGeometry args={[0.8, 64, 64]} />
+          <meshPhysicalMaterial
+            color="#e2e8f0"
+            metalness={0.6}
+            roughness={0.2}
+            clearcoat={1}
+            clearcoatRoughness={0.1}
+          />
         </mesh>
 
         {/* --- EYES --- */}
         <group position={[0, 0.1, 0.75]}>
           <mesh ref={leftEyeRef} position={[-0.25, 0, 0]}>
             <capsuleGeometry args={[0.08, 0.2, 4, 8]} />
-            <primitive object={glowMaterial} />
+            <meshStandardMaterial
+              color="#0ea5e9"
+              emissive="#0ea5e9"
+              emissiveIntensity={2}
+              toneMapped={false}
+            />
             <meshBasicMaterial color="#000" /> {/* Black backing */}
           </mesh>
           <mesh ref={rightEyeRef} position={[0.25, 0, 0]}>
             <capsuleGeometry args={[0.08, 0.2, 4, 8]} />
-            <primitive object={glowMaterial} />
+            <meshStandardMaterial
+              color="#0ea5e9"
+              emissive="#0ea5e9"
+              emissiveIntensity={2}
+              toneMapped={false}
+            />
           </mesh>
           {/* Eye Glow Spheres (Pupils) */}
           <mesh position={[-0.25, 0, 0.05]} scale={[1, 0.1, 1]}>
@@ -160,11 +154,23 @@ function CyberAvatar() {
         <group ref={ringsRef}>
           <mesh rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[1.2, 0.02, 16, 100]} />
-            <primitive object={ringMaterial} />
+            <meshBasicMaterial
+              color="#38bdf8"
+              transparent
+              opacity={0.3}
+              side={THREE.DoubleSide}
+              wireframe
+            />
           </mesh>
           <mesh rotation={[Math.PI / 2.2, 0, 0]}>
             <torusGeometry args={[1.4, 0.01, 16, 100]} />
-            <primitive object={ringMaterial} />
+            <meshBasicMaterial
+              color="#38bdf8"
+              transparent
+              opacity={0.3}
+              side={THREE.DoubleSide}
+              wireframe
+            />
           </mesh>
         </group>
 
@@ -183,7 +189,7 @@ function CyberAvatar() {
   );
 }
 
-function Scene({ autoRotate }: { autoRotate?: boolean }) {
+function Scene({ autoRotate, modelScene }: { autoRotate?: boolean; modelScene?: THREE.Group | null }) {
   return (
     <>
       <PerspectiveCamera makeDefault position={[0, 0, 6]} fov={45} />
@@ -197,7 +203,11 @@ function Scene({ autoRotate }: { autoRotate?: boolean }) {
       <Environment preset="city" />
       
       {/* The Avatar */}
-      <CyberAvatar />
+      {modelScene ? (
+        <primitive object={modelScene} position={[0, -1.2, 0]} />
+      ) : (
+        <CyberAvatar />
+      )}
       
       {/* Particles */}
       <Sparkles count={100} scale={8} size={2} speed={0.4} opacity={0.5} color="#bae6fd" />
@@ -219,38 +229,93 @@ function Scene({ autoRotate }: { autoRotate?: boolean }) {
   );
 }
 
-export default function DigitalHumanViewer({ 
-  autoRotate = false, 
-  onModelLoad 
+export default function DigitalHumanViewer({
+  modelUrl,
+  autoRotate = false,
+  showControls = true,
+  onModelLoad
 }: DigitalHumanViewerProps) {
-  // Trigger load callback instantly since we are procedural
+  const [modelScene, setModelScene] = useState<THREE.Group | null>(null);
+  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(modelUrl ? 'idle' : 'ready');
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (onModelLoad) onModelLoad({ type: 'procedural-cyber-avatar' });
-  }, [onModelLoad]);
+    if (!modelUrl) {
+      setModelScene(null);
+      setLoadStatus('ready');
+      onModelLoad?.({ type: 'procedural-cyber-avatar' });
+      return;
+    }
+
+    let cancelled = false;
+    const loader = new GLTFLoader();
+
+    setLoadStatus('loading');
+    setLoadError(null);
+
+    loader.load(
+      modelUrl,
+      (gltf) => {
+        if (cancelled) return;
+        setModelScene(gltf.scene);
+        setLoadStatus('ready');
+        onModelLoad?.(gltf.scene);
+      },
+      undefined,
+      (error) => {
+        if (cancelled) return;
+        console.error('模型加载失败', error);
+        setModelScene(null);
+        setLoadStatus('error');
+        setLoadError(error.message);
+        onModelLoad?.({ type: 'procedural-fallback', error: error.message });
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [modelUrl, onModelLoad]);
 
   return (
     <div className="w-full h-full bg-transparent space-y-4">
       <Canvas shadows dpr={[1, 2]}>
-        <Scene autoRotate={autoRotate} />
+        {(loadStatus === 'loading' || loadStatus === 'error') && (
+          <Html center>
+            <div className="px-4 py-2 rounded-xl bg-black/70 text-white text-sm border border-white/10 shadow-lg">
+              {loadStatus === 'loading' ? '模型加载中…' : `加载失败，使用内置模型 (${loadError})`}
+            </div>
+          </Html>
+        )}
+        <Scene autoRotate={autoRotate} modelScene={modelScene} />
       </Canvas>
 
-      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-4 space-y-3 text-white">
-        <h2 className="text-lg font-semibold">数字人控制</h2>
-        <div className="grid grid-cols-1 gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-white/70">模型状态:</span>
-            <span className="text-green-400">已加载</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-white/70">渲染引擎:</span>
-            <span className="text-blue-300">Three.js</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-white/70">自动旋转:</span>
-            <span className="text-white">{autoRotate ? '开启' : '关闭'}</span>
+      {showControls && (
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-4 space-y-3 text-white">
+          <h2 className="text-lg font-semibold">数字人控制</h2>
+          <div className="grid grid-cols-1 gap-2 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-white/70">模型状态:</span>
+              <span className={loadStatus === 'ready' ? 'text-green-400' : 'text-yellow-300'}>
+                {loadStatus === 'ready' ? '已加载' : loadStatus === 'loading' ? '加载中' : '使用内置模型'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-white/70">渲染引擎:</span>
+              <span className="text-blue-300">Three.js</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-white/70">自动旋转:</span>
+              <span className="text-white">{autoRotate ? '开启' : '关闭'}</span>
+            </div>
+            {loadError && (
+              <div className="text-xs text-red-200 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                {loadError}
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
