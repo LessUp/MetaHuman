@@ -105,10 +105,6 @@ export class TTSService {
     });
   }
 
-  getVoices() {
-    return this.voices;
-  }
-
   speakWithOptions(
     text: string,
     options: { lang?: string; rate?: number; pitch?: number; volume?: number; voiceName?: string } = {}

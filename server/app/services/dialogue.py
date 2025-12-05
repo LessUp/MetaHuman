@@ -21,7 +21,7 @@ class DialogueService:
   def __init__(self) -> None:
     self.api_key = os.getenv("OPENAI_API_KEY")
     self.model = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
-    self.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    self.base_url = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1/chat/completions")
     self.provider = os.getenv("LLM_PROVIDER", "openai").lower()
     self._session_messages: dict[str, list[dict[str, str]]] = {}
     try:
