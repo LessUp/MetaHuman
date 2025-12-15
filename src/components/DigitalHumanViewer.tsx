@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Environment, Float, Sparkles, ContactShadows, Html } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Environment, Float, Sparkles, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { useDigitalHumanStore } from '../store/digitalHumanStore';
 
@@ -8,7 +8,7 @@ interface DigitalHumanViewerProps {
   modelUrl?: string;
   autoRotate?: boolean;
   showControls?: boolean;
-  onModelLoad?: (model: any) => void;
+  onModelLoad?: (model: unknown) => void;
 }
 
 // --- Procedural Cyber Avatar Component ---
@@ -52,7 +52,7 @@ function CyberAvatar() {
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    const intensity = expressionIntensity ?? 1;
+    const intensity = Math.max(0, Math.min(1, expressionIntensity ?? 1));
 
     // Idle Floating Logic is handled by <Float>, we handle specific animations here
     
@@ -76,20 +76,21 @@ function CyberAvatar() {
 
     // Expressions
     if (leftEyeRef.current?.scale && rightEyeRef.current?.scale) {
-      let scaleY = 1;
+      const baseScaleY = 1;
+      let targetScaleY = baseScaleY;
 
       // Blink Logic
       const blink = Math.sin(t * 3);
-      if (blink > 0.98 || currentExpression === 'blink') {
-        scaleY = 0.1;
-      }
+      const isBlinking = blink > 0.98 || currentExpression === 'blink';
 
       // Emotional Logic
       if (currentExpression === 'smile') {
-        scaleY = 0.5; // Happy eyes (squint)
+        targetScaleY = 0.5; // Happy eyes (squint)
       } else if (currentExpression === 'surprise') {
-        scaleY = 1.3; // Wide eyes
+        targetScaleY = 1.3; // Wide eyes
       }
+
+      const scaleY = isBlinking ? 0.1 : THREE.MathUtils.lerp(baseScaleY, targetScaleY, intensity);
 
       leftEyeRef.current.scale.y = THREE.MathUtils.lerp(leftEyeRef.current.scale.y, scaleY, 0.2);
       rightEyeRef.current.scale.y = THREE.MathUtils.lerp(rightEyeRef.current.scale.y, scaleY, 0.2);
@@ -169,13 +170,13 @@ function CyberAvatar() {
         </group>
 
         {/* --- EARS / HEADPHONES --- */}
-        <mesh position={[0.8, 0, 0]}>
-           <cylinderGeometry args={[0.2, 0.2, 0.3, 32]} rotation={[0, 0, Math.PI/2]} />
-           <meshStandardMaterial color="#475569" />
+        <mesh position={[0.8, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.2, 0.2, 0.3, 32]} />
+          <meshStandardMaterial color="#475569" />
         </mesh>
-        <mesh position={[-0.8, 0, 0]}>
-           <cylinderGeometry args={[0.2, 0.2, 0.3, 32]} rotation={[0, 0, Math.PI/2]} />
-           <meshStandardMaterial color="#475569" />
+        <mesh position={[-0.8, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.2, 0.2, 0.3, 32]} />
+          <meshStandardMaterial color="#475569" />
         </mesh>
 
       </Float>
@@ -221,6 +222,7 @@ function Scene({ autoRotate }: { autoRotate?: boolean }) {
 
 export default function DigitalHumanViewer({ 
   autoRotate = false, 
+  showControls = true,
   onModelLoad 
 }: DigitalHumanViewerProps) {
   // Trigger load callback instantly since we are procedural
@@ -234,23 +236,25 @@ export default function DigitalHumanViewer({
         <Scene autoRotate={autoRotate} />
       </Canvas>
 
-      <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-4 space-y-3 text-white">
-        <h2 className="text-lg font-semibold">数字人控制</h2>
-        <div className="grid grid-cols-1 gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-white/70">模型状态:</span>
-            <span className="text-green-400">已加载</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-white/70">渲染引擎:</span>
-            <span className="text-blue-300">Three.js</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-white/70">自动旋转:</span>
-            <span className="text-white">{autoRotate ? '开启' : '关闭'}</span>
+      {showControls && (
+        <div className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-4 space-y-3 text-white">
+          <h2 className="text-lg font-semibold">数字人控制</h2>
+          <div className="grid grid-cols-1 gap-2 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-white/70">模型状态:</span>
+              <span className="text-green-400">已加载</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-white/70">渲染引擎:</span>
+              <span className="text-blue-300">Three.js</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-white/70">自动旋转:</span>
+              <span className="text-white">{autoRotate ? '开启' : '关闭'}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

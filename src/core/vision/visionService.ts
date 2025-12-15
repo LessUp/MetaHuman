@@ -3,12 +3,32 @@ import { mapFaceToEmotion, UserEmotion } from './visionMapper';
 type EmotionCallback = (emotion: UserEmotion) => void;
 type MotionCallback = (motion: 'nod' | 'shakeHead' | 'raiseHand' | 'waveHand') => void;
 
+type Landmark = { x: number; y: number; z: number };
+type FaceMeshResultsLike = { multiFaceLandmarks?: Landmark[][] };
+
+type PoseLandmark = { x: number; y: number };
+type PoseResultsLike = { poseLandmarks?: PoseLandmark[] };
+
+type MediaPipeModelLike = {
+  setOptions: (options: Record<string, unknown>) => void;
+  onResults: (callback: (results: unknown) => void) => void;
+  send: (input: { image: HTMLVideoElement }) => Promise<void>;
+};
+
+type FaceMeshModuleLike = {
+  FaceMesh: new (options: { locateFile: (file: string) => string }) => MediaPipeModelLike;
+};
+
+type PoseModuleLike = {
+  Pose: new (options: { locateFile: (file: string) => string }) => MediaPipeModelLike;
+};
+
 class VisionService {
   private video: HTMLVideoElement | null = null;
   private stream: MediaStream | null = null;
   private running = false;
-  private faceMesh: any = null;
-  private pose: any = null;
+  private faceMesh: MediaPipeModelLike | null = null;
+  private pose: MediaPipeModelLike | null = null;
   private onEmotion: EmotionCallback | null = null;
   private onMotion: MotionCallback | null = null;
   private yawHistory: number[] = [];
@@ -49,7 +69,7 @@ class VisionService {
     }
 
     try {
-      const mod: any = await import('@mediapipe/face_mesh');
+      const mod = (await import('@mediapipe/face_mesh')) as unknown as FaceMeshModuleLike;
       const FaceMesh = mod.FaceMesh;
       this.faceMesh = new FaceMesh({
         locateFile: (file: string) =>
@@ -61,12 +81,12 @@ class VisionService {
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5,
       });
-      this.faceMesh.onResults((results: any) => {
+      this.faceMesh.onResults((results: unknown) => {
         const emotion = mapFaceToEmotion(results);
         if (this.onEmotion) {
           this.onEmotion(emotion);
         }
-        const landmarks = results?.multiFaceLandmarks?.[0];
+        const landmarks = this.getFaceLandmarks(results);
         const motion = this.detectHeadMotion(landmarks);
         if (motion && this.onMotion) {
           this.onMotion(motion);
@@ -77,7 +97,7 @@ class VisionService {
     }
 
     try {
-      const poseMod: any = await import('@mediapipe/pose');
+      const poseMod = (await import('@mediapipe/pose')) as unknown as PoseModuleLike;
       const Pose = poseMod.Pose;
       this.pose = new Pose({
         locateFile: (file: string) =>
@@ -90,7 +110,7 @@ class VisionService {
         minDetectionConfidence: 0.5,
         minTrackingConfidence: 0.5,
       });
-      this.pose.onResults((results: any) => {
+      this.pose.onResults((results: unknown) => {
         const upperMotion = this.detectUpperBodyMotion(results);
         if (upperMotion && this.onMotion) {
           this.onMotion(upperMotion);
@@ -147,7 +167,31 @@ class VisionService {
     this.lastUpperBodyMotionTime = 0;
   }
 
-  private computeHeadPose(landmarks: any): { yaw: number; pitch: number } | null {
+  private getFaceLandmarks(results: unknown): Landmark[] | undefined {
+    if (!results || typeof results !== 'object') {
+      return undefined;
+    }
+    const typed = results as FaceMeshResultsLike;
+    const landmarks = typed.multiFaceLandmarks?.[0];
+    if (!Array.isArray(landmarks)) {
+      return undefined;
+    }
+    return landmarks;
+  }
+
+  private getPoseLandmarks(results: unknown): PoseLandmark[] | undefined {
+    if (!results || typeof results !== 'object') {
+      return undefined;
+    }
+    const typed = results as PoseResultsLike;
+    const landmarks = typed.poseLandmarks;
+    if (!Array.isArray(landmarks)) {
+      return undefined;
+    }
+    return landmarks;
+  }
+
+  private computeHeadPose(landmarks: Landmark[] | undefined): { yaw: number; pitch: number } | null {
     if (!landmarks || landmarks.length < 300) {
       return null;
     }
@@ -166,7 +210,7 @@ class VisionService {
     return { yaw, pitch };
   }
 
-  private detectHeadMotion(landmarks: any): 'nod' | 'shakeHead' | null {
+  private detectHeadMotion(landmarks: Landmark[] | undefined): 'nod' | 'shakeHead' | null {
     const pose = this.computeHeadPose(landmarks);
     if (!pose) {
       return null;
@@ -205,8 +249,8 @@ class VisionService {
     return null;
   }
 
-  private detectUpperBodyMotion(results: any): 'raiseHand' | 'waveHand' | null {
-    const landmarks = results?.poseLandmarks;
+  private detectUpperBodyMotion(results: unknown): 'raiseHand' | 'waveHand' | null {
+    const landmarks = this.getPoseLandmarks(results);
     if (!landmarks || landmarks.length < 17) {
       return null;
     }

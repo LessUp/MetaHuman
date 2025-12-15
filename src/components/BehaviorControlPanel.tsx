@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, Brain, Zap, Target, Clock, TrendingUp } from 'lucide-react';
 
 interface BehaviorState {
@@ -9,9 +9,11 @@ interface BehaviorState {
   goal: string;
 }
 
+type BehaviorParameters = Record<string, unknown>;
+
 interface BehaviorControlPanelProps {
   currentBehavior: string;
-  onBehaviorChange: (behavior: string, parameters: any) => void;
+  onBehaviorChange: (behavior: string, parameters: BehaviorParameters) => void;
 }
 
 export default function BehaviorControlPanel({ currentBehavior, onBehaviorChange }: BehaviorControlPanelProps) {
@@ -24,73 +26,66 @@ export default function BehaviorControlPanel({ currentBehavior, onBehaviorChange
   });
 
   const [isAutoMode, setIsAutoMode] = useState(false);
-  const [decisionInterval, setDecisionInterval] = useState(3000);
-  const [learningRate, setLearningRate] = useState(0.1);
+  const decisionInterval = 3000;
 
-  const behaviors = [
-    {
-      name: 'idle',
-      label: 'Idle',
-      icon: <Clock size={20} />,
-      color: 'text-gray-400',
-      description: 'Basic standby loop',
-      parameters: { idleTime: 5000, breathing: true }
-    },
-    {
-      name: 'greeting',
-      label: 'Greet',
-      icon: <Target size={20} />,
-      color: 'text-green-400',
-      description: 'Friendly wave & smile',
-      parameters: { wave: true, smile: true, duration: 3000 }
-    },
-    {
-      name: 'listening',
-      label: 'Listen',
-      icon: <Brain size={20} />,
-      color: 'text-blue-400',
-      description: 'Active attention focus',
-      parameters: { headNod: true, eyeContact: true, attention: 0.9 }
-    },
-    {
-      name: 'thinking',
-      label: 'Think',
-      icon: <Activity size={20} />,
-      color: 'text-yellow-400',
-      description: 'Processing animation',
-      parameters: { headTilt: true, pause: true, processing: true }
-    },
-    {
-      name: 'speaking',
-      label: 'Speak',
-      icon: <TrendingUp size={20} />,
-      color: 'text-purple-400',
-      description: 'Active conversation',
-      parameters: { mouthMove: true, gestures: true, emphasis: 0.8 }
-    },
-    {
-      name: 'excited',
-      label: 'Excite',
-      icon: <Zap size={20} />,
-      color: 'text-orange-400',
-      description: 'High energy state',
-      parameters: { energy: 0.9, movement: true, animation: 'bounce' }
-    }
-  ];
+  const behaviors = useMemo(
+    () => [
+      {
+        name: 'idle',
+        label: 'Idle',
+        icon: <Clock size={20} />,
+        color: 'text-gray-400',
+        description: 'Basic standby loop',
+        parameters: { idleTime: 5000, breathing: true },
+      },
+      {
+        name: 'greeting',
+        label: 'Greet',
+        icon: <Target size={20} />,
+        color: 'text-green-400',
+        description: 'Friendly wave & smile',
+        parameters: { wave: true, smile: true, duration: 3000 },
+      },
+      {
+        name: 'listening',
+        label: 'Listen',
+        icon: <Brain size={20} />,
+        color: 'text-blue-400',
+        description: 'Active attention focus',
+        parameters: { headNod: true, eyeContact: true, attention: 0.9 },
+      },
+      {
+        name: 'thinking',
+        label: 'Think',
+        icon: <Activity size={20} />,
+        color: 'text-yellow-400',
+        description: 'Processing animation',
+        parameters: { headTilt: true, pause: true, processing: true },
+      },
+      {
+        name: 'speaking',
+        label: 'Speak',
+        icon: <TrendingUp size={20} />,
+        color: 'text-purple-400',
+        description: 'Active conversation',
+        parameters: { mouthMove: true, gestures: true, emphasis: 0.8 },
+      },
+      {
+        name: 'excited',
+        label: 'Excite',
+        icon: <Zap size={20} />,
+        color: 'text-orange-400',
+        description: 'High energy state',
+        parameters: { energy: 0.9, movement: true, animation: 'bounce' },
+      },
+    ],
+    []
+  );
 
-  // Auto Decision Mock
-  useEffect(() => {
-    if (!isAutoMode) return;
-    const interval = setInterval(() => {
-      makeAutoDecision();
-    }, decisionInterval);
-    return () => clearInterval(interval);
-  }, [isAutoMode, decisionInterval]);
-
-  const makeAutoDecision = () => {
+  const makeAutoDecision = useCallback(() => {
     const now = new Date();
     let newBehavior = 'idle';
-    let newParameters = {};
+    let newParameters: BehaviorParameters = {};
     let newConfidence = 0.7;
 
     if (Math.random() > 0.7) {
@@ -113,9 +108,18 @@ export default function BehaviorControlPanel({ currentBehavior, onBehaviorChange
     });
 
     onBehaviorChange(newBehavior, newParameters);
-  };
+  }, [behaviors, onBehaviorChange]);
 
-  const handleBehaviorClick = (behaviorName: string, parameters: any) => {
+  // Auto Decision Mock
+  useEffect(() => {
+    if (!isAutoMode) return;
+    const interval = setInterval(() => {
+      makeAutoDecision();
+    }, decisionInterval);
+    return () => clearInterval(interval);
+  }, [decisionInterval, isAutoMode, makeAutoDecision]);
+
+  const handleBehaviorClick = (behaviorName: string, parameters: BehaviorParameters) => {
     const behavior = behaviors.find(b => b.name === behaviorName);
     if (!behavior) return;
 

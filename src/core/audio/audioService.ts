@@ -1,16 +1,46 @@
 import { useDigitalHumanStore } from '../../store/digitalHumanStore';
 
+type SpeechRecognitionResultLike = ArrayLike<{ transcript: string }>;
+type SpeechRecognitionResultListLike = ArrayLike<SpeechRecognitionResultLike>;
+
+type SpeechRecognitionEventLike = {
+  results: SpeechRecognitionResultListLike;
+};
+
+type SpeechRecognitionErrorEventLike = {
+  error: string;
+};
+
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+type SpeechRecognitionWindow = {
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  SpeechRecognition?: SpeechRecognitionConstructor;
+};
+
 // 语音合成服务
 export class TTSService {
   private synth: SpeechSynthesis;
   private voices: SpeechSynthesisVoice[];
-  
+
   constructor() {
     this.synth = window.speechSynthesis;
     this.voices = [];
     this.loadVoices();
   }
-  
+
   private loadVoices() {
     this.voices = this.synth.getVoices();
     if (this.voices.length === 0) {
@@ -23,7 +53,7 @@ export class TTSService {
   getVoices() {
     return this.voices;
   }
-  
+
   speak(text: string, lang: string = 'zh-CN') {
     this.speakWithOptions(text, { lang });
   }
@@ -43,13 +73,13 @@ export class TTSService {
     if (this.synth.speaking) {
       this.synth.cancel();
     }
-    
+
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
     utterance.rate = rate;
     utterance.pitch = pitch;
     utterance.volume = volume;
-    
+
     // 选择中文语音或指定语音
     let selectedVoice: SpeechSynthesisVoice | undefined;
     if (voiceName) {
@@ -61,24 +91,24 @@ export class TTSService {
     if (selectedVoice) {
       utterance.voice = selectedVoice;
     }
-    
+
     utterance.onstart = () => {
       useDigitalHumanStore.getState().setSpeaking(true);
     };
-    
+
     utterance.onend = () => {
       useDigitalHumanStore.getState().setSpeaking(false);
     };
-    
+
     utterance.onerror = (event) => {
       console.error('语音合成错误:', event);
       useDigitalHumanStore.getState().setSpeaking(false);
       useDigitalHumanStore.getState().setError('语音合成失败');
     };
-    
+
     this.synth.speak(utterance);
   }
-  
+
   stop() {
     this.synth.cancel();
     useDigitalHumanStore.getState().setSpeaking(false);
@@ -87,31 +117,37 @@ export class TTSService {
 
 // 语音识别服务
 export class ASRService {
-  private recognition: any;
+  private recognition: SpeechRecognitionLike | null = null;
   private isSupported: boolean;
   private onResultCallback: ((text: string) => void) | null = null;
   private mode: 'command' | 'dictation' = 'command';
-  
+
   constructor() {
     this.isSupported = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
     if (this.isSupported) {
       this.initRecognition();
     }
   }
-  
+
   private initRecognition() {
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    const win = window as unknown as SpeechRecognitionWindow;
+    const SpeechRecognition = win.webkitSpeechRecognition || win.SpeechRecognition;
+    if (!SpeechRecognition) {
+      this.isSupported = false;
+      this.recognition = null;
+      return;
+    }
     this.recognition = new SpeechRecognition();
-    
+
     this.recognition.continuous = false;
     this.recognition.interimResults = false;
     this.recognition.lang = 'zh-CN';
-    
+
     this.recognition.onstart = () => {
       console.log('语音识别开始');
     };
-    
-    this.recognition.onresult = (event: any) => {
+
+    this.recognition.onresult = (event: SpeechRecognitionEventLike) => {
       const transcript = event.results[0][0].transcript;
       console.log('识别结果:', transcript);
       if (this.onResultCallback) {
@@ -121,21 +157,21 @@ export class ASRService {
         this.processVoiceCommand(transcript);
       }
     };
-    
-    this.recognition.onerror = (event: any) => {
+
+    this.recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
       console.error('语音识别错误:', event.error);
       useDigitalHumanStore.getState().setRecording(false);
       useDigitalHumanStore.getState().setError('语音识别失败: ' + event.error);
     };
-    
+
     this.recognition.onend = () => {
       console.log('语音识别结束');
       useDigitalHumanStore.getState().setRecording(false);
     };
   }
-  
+
   start(options?: { onResult?: (text: string) => void; mode?: 'command' | 'dictation' }) {
-    if (!this.isSupported) {
+    if (!this.isSupported || !this.recognition) {
       console.warn('浏览器不支持语音识别');
       useDigitalHumanStore.getState().setError('浏览器不支持语音识别功能');
       return;
@@ -143,7 +179,7 @@ export class ASRService {
 
     this.onResultCallback = options?.onResult ?? null;
     this.mode = options?.mode ?? 'command';
-    
+
     try {
       this.recognition.start();
       useDigitalHumanStore.getState().setRecording(true);
@@ -153,7 +189,7 @@ export class ASRService {
       useDigitalHumanStore.getState().setError('启动语音识别失败');
     }
   }
-  
+
   stop() {
     if (this.recognition && this.isSupported) {
       this.recognition.stop();
@@ -161,9 +197,10 @@ export class ASRService {
     this.onResultCallback = null;
     this.mode = 'command';
   }
-  
+
   private processVoiceCommand(command: string) {
     const store = useDigitalHumanStore.getState();
+
     
     // 基本命令处理
     if (command.includes('播放') || command.includes('开始')) {

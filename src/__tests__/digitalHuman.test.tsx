@@ -233,7 +233,7 @@ describe('DigitalHumanStore', () => {
   });
 
   it('handles play action', () => {
-    const { play, isPlaying } = useDigitalHumanStore.getState();
+    const { play } = useDigitalHumanStore.getState();
     play();
     expect(useDigitalHumanStore.getState().isPlaying).toBe(true);
   });
@@ -247,7 +247,7 @@ describe('DigitalHumanStore', () => {
   });
 
   it('handles reset action', () => {
-    const { play, reset, isPlaying } = useDigitalHumanStore.getState();
+    const { play, reset } = useDigitalHumanStore.getState();
     play();
     reset();
     expect(useDigitalHumanStore.getState().isPlaying).toBe(false);
@@ -257,7 +257,7 @@ describe('DigitalHumanStore', () => {
   });
 
   it('handles recording toggle', () => {
-    const { startRecording, isRecording } = useDigitalHumanStore.getState();
+    const { startRecording } = useDigitalHumanStore.getState();
     startRecording();
     expect(useDigitalHumanStore.getState().isRecording).toBe(true);
   });
@@ -410,7 +410,7 @@ describe('Performance Tests', () => {
   });
 
   it('handles rapid state changes efficiently', () => {
-    const { play, pause, play: playAgain } = useDigitalHumanStore.getState();
+    const { play, pause } = useDigitalHumanStore.getState();
     
     const startTime = performance.now();
     for (let i = 0; i < 100; i++) {

@@ -1,7 +1,7 @@
 export interface ChatRequestPayload {
   sessionId?: string;
   userText: string;
-  meta?: Record<string, any>;
+  meta?: Record<string, unknown>;
 }
 
 export interface ChatResponsePayload {

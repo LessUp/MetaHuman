@@ -21,7 +21,7 @@ export default function DigitalHumanPage() {
   const [modelLoaded, setModelLoaded] = useState(false);
 
   // 处理模型加载完成
-  const handleModelLoad = (model: any) => {
+  const handleModelLoad = (model: unknown) => {
     console.log('数字人模型加载完成:', model);
     console.log('当前modelLoaded状态:', modelLoaded);
     
@@ -116,10 +116,11 @@ export default function DigitalHumanPage() {
   // 组件卸载时清理
   useEffect(() => {
     return () => {
-      if (isRecording) {
+      const { isRecording: recording, isSpeaking: speaking } = useDigitalHumanStore.getState();
+      if (recording) {
         asrService.stop();
       }
-      if (isSpeaking) {
+      if (speaking) {
         ttsService.stop();
       }
     };

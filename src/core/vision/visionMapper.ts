@@ -6,6 +6,22 @@ interface Landmark {
   z: number;
 }
 
+type FaceMeshResultsLike = {
+  multiFaceLandmarks?: Landmark[][];
+};
+
+function getFirstFaceLandmarks(results: unknown): Landmark[] | undefined {
+  if (!results || typeof results !== 'object') {
+    return undefined;
+  }
+  const typed = results as FaceMeshResultsLike;
+  const landmarks = typed.multiFaceLandmarks?.[0];
+  if (!Array.isArray(landmarks)) {
+    return undefined;
+  }
+  return landmarks;
+}
+
 function distance(a: Landmark, b: Landmark): number {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
@@ -13,8 +29,8 @@ function distance(a: Landmark, b: Landmark): number {
   return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
-export function mapFaceToEmotion(results: any): UserEmotion {
-  const landmarks: Landmark[] | undefined = results?.multiFaceLandmarks?.[0];
+export function mapFaceToEmotion(results: unknown): UserEmotion {
+  const landmarks = getFirstFaceLandmarks(results);
   if (!landmarks || landmarks.length < 300) {
     return 'neutral';
   }

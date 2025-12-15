@@ -16,7 +16,6 @@ interface ExpressionControlPanelProps {
 
 export default function ExpressionControlPanel({ currentExpression, onExpressionChange }: ExpressionControlPanelProps) {
   const [intensity, setIntensity] = useState(0.8);
-  const [customColor, setCustomColor] = useState('#4f46e5');
 
   const expressions: ExpressionControl[] = [
     { name: 'neutral', label: 'Neutral', icon: <Meh size={20} />, color: 'text-gray-400', intensity: 0.5 },
@@ -29,7 +28,8 @@ export default function ExpressionControlPanel({ currentExpression, onExpression
   ];
 
   const handleExpressionClick = (expressionName: string, defaultIntensity: number) => {
-    onExpressionChange(expressionName, intensity);
+    setIntensity(defaultIntensity);
+    onExpressionChange(expressionName, defaultIntensity);
   };
 
   const handleIntensityChange = (newIntensity: number) => {

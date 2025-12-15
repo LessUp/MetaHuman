@@ -31,7 +31,7 @@ export class DigitalHumanEngine {
     setEmotion(emotion);
   }
 
-  setBehavior(behavior: string, params?: any) {
+  setBehavior(behavior: string, _params?: unknown) {
     const { setBehavior, setAnimation, setPlaying } = useDigitalHumanStore.getState();
     setBehavior(behavior);
 

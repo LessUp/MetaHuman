@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, VolumeX, Play, Square } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mic, MicOff, Volume2, VolumeX, Play } from 'lucide-react';
 import { ttsService, asrService } from '../core/audio/audioService';
 
 interface VoiceInteractionPanelProps {
@@ -47,11 +47,6 @@ export default function VoiceInteractionPanel({ onTranscript, onSpeak }: VoiceIn
     } else if (voices.length > 0) {
       setVoice(voices[0]);
     }
-  };
-
-  // 初始化语音识别
-  const initSpeechRecognition = () => {
-    // 识别逻辑由统一的 ASRService 管理，此处保留占位
   };
 
   // 开始/停止录音

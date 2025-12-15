@@ -10,7 +10,7 @@ import { ttsService, asrService } from '../core/audio/audioService';
 import { digitalHumanEngine } from '../core/avatar/DigitalHumanEngine';
 import { sendUserInput } from '../core/dialogue/dialogueService';
 import { Toaster, toast } from 'sonner';
-import { Mic, MessageSquare, Settings, Maximize2, Minimize2, Globe, Activity, X, Radio } from 'lucide-react';
+import { Mic, MessageSquare, Settings, Activity, X, Radio } from 'lucide-react';
 
 export default function AdvancedDigitalHumanPage() {
   const {
@@ -42,7 +42,7 @@ export default function AdvancedDigitalHumanPage() {
   }, [chatMessages]);
 
   // --- Event Handlers (Preserved from original) ---
-  const handleModelLoad = (model: any) => {
+  const handleModelLoad = (_model: unknown) => {
     toast.success('Digital Interface Online');
   };
 
@@ -111,7 +111,7 @@ export default function AdvancedDigitalHumanPage() {
     digitalHumanEngine.setExpressionIntensity(intensity);
   };
 
-  const handleBehaviorChange = (behavior: string, params: any) => {
+  const handleBehaviorChange = (behavior: string, params: Record<string, unknown>) => {
     digitalHumanEngine.setBehavior(behavior, params);
   };
 
