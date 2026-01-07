@@ -1,0 +1,373 @@
+# Implementation Plan: Digital Human Platform Refactor
+
+## Overview
+
+本实现计划将重构工作分解为可执行的编码任务，按照核心服务层 → UI层 → 性能优化的顺序进行。每个任务都关联到具体的需求，确保完整覆盖所有重构目标。
+
+## Tasks
+
+- [x] 1. 重构 TTS 语音合成服务
+  - [x] 1.1 实现语音队列管理系统
+    - 添加 SpeechQueueItem 接口和队列数组
+    - 实现 processQueue() 方法处理队列
+    - 修改 speak() 方法支持队列而非取消
+    - 添加 clearQueue() 和 getQueueLength() 方法
+    - _Requirements: 2.2_
+  - [x] 1.2 编写 TTS 队列属性测试
+    - **Property 3: TTS Speech Queue Ordering**
+    - **Validates: Requirements 2.2**
+  - [x] 1.3 实现 TTS 状态同步
+    - 确保 speech start/end 正确更新 Store speaking 状态
+    - 处理中断情况的状态重置
+    - _Requirements: 2.4, 2.5_
+  - [x] 1.4 编写 TTS 状态同步属性测试
+    - **Property 4: TTS Speaking State Round-Trip**
+    - **Validates: Requirements 2.4, 2.5**
+  - [x] 1.5 编写 TTS 配置应用属性测试
+    - **Property 5: TTS Config Application**
+    - **Validates: Requirements 2.7**
+
+- [x] 2. 重构 ASR 语音识别服务
+  - [x] 2.1 添加权限检查和请求功能
+    - 实现 checkPermission() 方法
+    - 实现 requestPermission() 方法
+    - 添加权限错误的友好提示
+    - _Requirements: 3.1, 3.2_
+  - [x] 2.2 实现超时机制
+    - 添加 timeout 配置选项
+    - 实现超时自动停止逻辑
+    - 添加超时通知回调
+    - _Requirements: 3.4_
+  - [x] 2.3 改进资源释放
+    - 确保 stop() 正确释放所有资源
+    - 处理 double-start 冲突
+    - _Requirements: 3.6, 3.7_
+  - [x] 2.4 编写 ASR 资源清理属性测试
+    - **Property 7: ASR Resource Cleanup**
+    - **Validates: Requirements 3.6**
+  - [x] 2.5 编写 ASR 双启动处理属性测试
+    - **Property 8: ASR Double-Start Handling**
+    - **Validates: Requirements 3.7**
+
+- [x] 3. Checkpoint - 语音服务重构验证
+  - 确保所有语音相关测试通过
+  - 验证 TTS 队列功能正常
+  - 验证 ASR 权限和超时功能正常
+  - 如有问题请询问用户
+
+- [ ] 4. 重构 Vision 视觉镜像服务
+  - [ ] 4.1 实现模型加载重试机制
+    - 添加 VisionServiceConfig 配置接口
+    - 实现 loadModelsWithRetry() 带指数退避
+    - 最大重试次数限制为 3
+    - _Requirements: 4.3_
+  - [ ] 4.2 编写视觉模型重试属性测试
+    - **Property 9: Vision Model Retry**
+    - **Validates: Requirements 4.3**
+  - [ ] 4.3 实现情绪检测防抖
+    - 添加 emotionDebounceMs 配置
+    - 实现 debounceEmotion() 方法
+    - 只发送稳定的情绪变化
+    - _Requirements: 4.5_
+  - [ ] 4.4 编写情绪防抖属性测试
+    - **Property 10: Vision Emotion Debounce**
+    - **Validates: Requirements 4.5**
+  - [ ] 4.5 实现动作检测冷却
+    - 添加 motionCooldownMs 配置
+    - 实现 shouldEmitMotion() 方法
+    - 防止重复动作检测
+    - _Requirements: 4.6_
+  - [ ] 4.6 编写动作冷却属性测试
+    - **Property 11: Vision Motion Cooldown**
+    - **Validates: Requirements 4.6**
+  - [ ] 4.7 改进资源释放
+    - 确保 stop() 释放所有摄像头资源
+    - 清理 MediaPipe 模型引用
+    - _Requirements: 4.7_
+  - [ ] 4.8 编写视觉资源清理属性测试
+    - **Property 12: Vision Resource Cleanup**
+    - **Validates: Requirements 4.7**
+
+- [ ] 5. 重构 Dialogue 对话服务
+  - [ ] 5.1 改进重试逻辑
+    - 实现指数退避重试
+    - 区分可重试和不可重试错误
+    - 添加重试状态跟踪
+    - _Requirements: 5.1_
+  - [ ] 5.2 编写对话重试属性测试
+    - **Property 13: Dialogue Retry with Backoff**
+    - **Validates: Requirements 5.1**
+  - [ ] 5.3 实现响应验证
+    - 添加 validateResponse() 函数
+    - 处理缺失字段的默认值
+    - _Requirements: 5.6_
+  - [ ] 5.4 编写响应验证属性测试
+    - **Property 18: Dialogue Response Validation**
+    - **Validates: Requirements 5.6**
+  - [ ] 5.5 改进降级响应
+    - 基于用户输入生成智能降级响应
+    - 添加上下文感知的回复
+    - _Requirements: 5.2_
+  - [ ] 5.6 编写降级响应属性测试
+    - **Property 14: Dialogue Fallback Response**
+    - **Validates: Requirements 5.2**
+  - [ ] 5.7 实现会话历史管理
+    - 添加历史长度限制配置
+    - 实现历史修剪逻辑
+    - 添加 clearSession 和 getSessionHistory 方法
+    - _Requirements: 5.3, 5.7_
+  - [ ] 5.8 编写会话历史属性测试
+    - **Property 15: Dialogue History Trimming**
+    - **Validates: Requirements 5.3**
+  - [ ] 5.9 实现连接状态同步
+    - 通信失败时更新 Store connectionStatus
+    - 添加连接详情跟踪
+    - _Requirements: 5.4_
+  - [ ] 5.10 编写连接状态同步属性测试
+    - **Property 16: Dialogue Connection Status Sync**
+    - **Validates: Requirements 5.4**
+
+- [ ] 6. Checkpoint - 对话服务重构验证
+  - 确保所有对话相关测试通过
+  - 验证重试和降级功能正常
+  - 验证会话管理功能正常
+  - 如有问题请询问用户
+
+- [ ] 7. 重构 Dialogue Orchestrator 对话编排器
+  - [ ] 7.1 实现正确的状态更新顺序
+    - 确保 emotion → action → speech 顺序
+    - 添加状态转换日志
+    - _Requirements: 6.1_
+  - [ ] 7.2 编写状态顺序属性测试
+    - **Property 19: Orchestrator State Sequence**
+    - **Validates: Requirements 6.1**
+  - [ ] 7.3 实现语音完成等待
+    - 添加 waitForSpeech 选项
+    - 语音完成后才重置到 idle
+    - _Requirements: 6.2_
+  - [ ] 7.4 编写语音等待属性测试
+    - **Property 20: Orchestrator Speech Wait**
+    - **Validates: Requirements 6.2**
+  - [ ] 7.5 实现无效值降级
+    - 验证 emotion 和 action 值
+    - 无效值使用 neutral/idle
+    - _Requirements: 6.3_
+  - [ ] 7.6 编写无效值降级属性测试
+    - **Property 21: Orchestrator Invalid Value Fallback**
+    - **Validates: Requirements 6.3**
+  - [ ] 7.7 实现静音行为
+    - isMuted 时跳过语音但更新视觉状态
+    - _Requirements: 6.4_
+  - [ ] 7.8 编写静音行为属性测试
+    - **Property 22: Orchestrator Muted Behavior**
+    - **Validates: Requirements 6.4**
+
+- [ ] 8. 重构 Digital Human Engine 数字人引擎
+  - [ ] 8.1 实现动画队列系统
+    - 添加 AnimationQueueItem 接口
+    - 实现 queueAnimation() 方法
+    - 实现 FIFO 队列处理
+    - 添加 clearAnimationQueue() 和 getQueueLength()
+    - _Requirements: 7.2_
+  - [ ] 8.2 编写动画队列属性测试
+    - **Property 23: Engine Animation Queue**
+    - **Validates: Requirements 7.2**
+  - [ ] 8.3 实现动画自动重置
+    - 动画完成后自动返回 idle
+    - 支持 autoReset=false 禁用
+    - _Requirements: 7.3_
+  - [ ] 8.4 编写动画自动重置属性测试
+    - **Property 24: Engine Animation Auto-Reset**
+    - **Validates: Requirements 7.3**
+  - [ ] 8.5 实现情感-表情映射
+    - 完善 EMOTION_TO_EXPRESSION 映射
+    - setEmotion 自动设置对应表情
+    - _Requirements: 7.4_
+  - [ ] 8.6 编写情感映射属性测试
+    - **Property 25: Engine Emotion-Expression Mapping**
+    - **Validates: Requirements 7.4**
+  - [ ] 8.7 实现无效表情降级
+    - 验证表情值有效性
+    - 无效值使用 neutral 并记录警告
+    - _Requirements: 7.5_
+  - [ ] 8.8 编写无效表情降级属性测试
+    - **Property 26: Engine Invalid Expression Fallback**
+    - **Validates: Requirements 7.5**
+
+- [ ] 9. Checkpoint - 核心引擎重构验证
+  - 确保所有引擎相关测试通过
+  - 验证动画队列功能正常
+  - 验证状态映射功能正常
+  - 如有问题请询问用户
+
+- [ ] 10. 重构 Store 状态管理
+  - [ ] 10.1 改进会话 ID 持久化
+    - 处理 localStorage 不可用情况
+    - 确保始终有有效的 session ID
+    - _Requirements: 8.1, 8.2_
+  - [ ] 10.2 编写会话 ID 可用性属性测试
+    - **Property 27: Store Session ID Availability**
+    - **Validates: Requirements 8.1, 8.2**
+  - [ ] 10.3 实现错误自动清除
+    - 添加 errorQueue 和 maxErrorQueueLength
+    - 实现 autoHideMs 自动清除
+    - _Requirements: 8.3_
+  - [ ] 10.4 编写错误自动清除属性测试
+    - **Property 28: Store Error Auto-Clear**
+    - **Validates: Requirements 8.3**
+  - [ ] 10.5 实现连接状态转换
+    - 添加 connectionDetails 跟踪
+    - 确保状态转换有效
+    - _Requirements: 8.4_
+  - [ ] 10.6 编写连接状态转换属性测试
+    - **Property 29: Store Connection State Transitions**
+    - **Validates: Requirements 8.4**
+  - [ ] 10.7 实现聊天历史限制
+    - 添加最大历史长度配置
+    - 超出时移除最旧消息
+    - _Requirements: 8.5_
+  - [ ] 10.8 编写聊天历史限制属性测试
+    - **Property 30: Store Chat History Limit**
+    - **Validates: Requirements 8.5**
+
+- [ ] 11. 重构 3D Viewer 模型加载
+  - [ ] 11.1 实现模型加载进度指示
+    - 添加加载进度回调
+    - 显示加载百分比
+    - _Requirements: 1.1, 1.3_
+  - [ ] 11.2 实现模型加载失败降级
+    - 加载失败时使用 CyberAvatar
+    - 显示清晰的错误信息
+    - _Requirements: 1.2_
+  - [ ] 11.3 编写模型加载降级属性测试
+    - **Property 1: Model Loading Fallback**
+    - **Validates: Requirements 1.2**
+  - [ ] 11.4 实现模型缓存
+    - 缓存已加载的模型
+    - 避免重复网络请求
+    - _Requirements: 1.4_
+  - [ ] 11.5 编写模型缓存属性测试
+    - **Property 2: Model Cache Effectiveness**
+    - **Validates: Requirements 1.4**
+
+- [ ] 12. Checkpoint - 状态管理和模型加载验证
+  - 确保所有 Store 相关测试通过
+  - 验证模型加载和缓存功能正常
+  - 如有问题请询问用户
+
+- [ ] 13. 改进错误处理系统
+  - [ ] 13.1 实现错误日志记录
+    - 添加统一的错误日志格式
+    - 包含服务名、时间戳、上下文
+    - _Requirements: 10.1_
+  - [ ] 13.2 编写错误日志属性测试
+    - **Property 33: Error Logging with Context**
+    - **Validates: Requirements 10.1**
+  - [ ] 13.3 改进 ErrorBoundary 组件
+    - 确保错误不传播到父组件
+    - 显示友好的降级 UI
+    - _Requirements: 10.2_
+  - [ ] 13.4 编写错误边界属性测试
+    - **Property 34: Error Boundary Containment**
+    - **Validates: Requirements 10.2**
+  - [ ] 13.5 实现自动错误恢复
+    - 可恢复错误自动重试
+    - 30秒内尝试恢复
+    - _Requirements: 10.3_
+  - [ ] 13.6 编写自动恢复属性测试
+    - **Property 35: Automatic Error Recovery**
+    - **Validates: Requirements 10.3**
+  - [ ] 13.7 实现错误消息合并
+    - 1秒内的多个错误合并显示
+    - 显示错误计数
+    - _Requirements: 10.5_
+  - [ ] 13.8 编写错误合并属性测试
+    - **Property 36: Error Consolidation**
+    - **Validates: Requirements 10.5**
+
+- [ ] 14. 改进 UI 响应性
+  - [ ] 14.1 实现交互反馈计时
+    - 确保所有交互 100ms 内有反馈
+    - 添加加载状态指示
+    - _Requirements: 9.2_
+  - [ ] 14.2 编写 UI 反馈计时属性测试
+    - **Property 31: UI Feedback Timing**
+    - **Validates: Requirements 9.2**
+  - [ ] 14.3 实现连接状态 UI 同步
+    - 状态变化立即反映到 UI
+    - _Requirements: 9.5_
+  - [ ] 14.4 编写连接状态 UI 同步属性测试
+    - **Property 32: UI Connection Status Sync**
+    - **Validates: Requirements 9.5**
+  - [ ] 14.5 完善键盘快捷键
+    - 确保所有快捷键正常工作
+    - 添加 ESC 关闭设置面板
+    - _Requirements: 9.4, 9.7_
+
+- [ ] 15. Checkpoint - 错误处理和 UI 验证
+  - 确保所有错误处理测试通过
+  - 验证 UI 响应性正常
+  - 如有问题请询问用户
+
+- [ ] 16. 重构后端对话服务
+  - [ ] 16.1 改进请求验证
+    - 验证 userText 字段
+    - 返回适当的错误响应
+    - _Requirements: 11.2_
+  - [ ] 16.2 编写后端请求验证属性测试
+    - **Property 38: Backend Request Validation**
+    - **Validates: Requirements 11.2**
+  - [ ] 16.3 改进非 JSON 响应处理
+    - LLM 返回非 JSON 时优雅处理
+    - 使用原始文本作为 replyText
+    - _Requirements: 11.3_
+  - [ ] 16.4 编写非 JSON 处理属性测试
+    - **Property 39: Backend Non-JSON Handling**
+    - **Validates: Requirements 11.3**
+  - [ ] 16.5 改进会话历史管理
+    - 确保历史长度限制生效
+    - _Requirements: 11.4_
+  - [ ] 16.6 编写后端历史限制属性测试
+    - **Property 40: Backend Session History Limit**
+    - **Validates: Requirements 11.4**
+  - [ ] 16.7 改进 URL 规范化
+    - 处理各种 OPENAI_BASE_URL 格式
+    - _Requirements: 11.6_
+  - [ ] 16.8 编写 URL 规范化属性测试
+    - **Property 42: Backend URL Normalization**
+    - **Validates: Requirements 11.6**
+
+- [ ] 17. 性能优化
+  - [ ] 17.1 实现帧率监控
+    - 添加 FPS 计算和显示
+    - 确保维持 30+ FPS
+    - _Requirements: 12.1_
+  - [ ] 17.2 编写帧率属性测试
+    - **Property 43: 3D Viewer Frame Rate**
+    - **Validates: Requirements 12.1**
+  - [ ] 17.3 实现状态更新防抖
+    - 限制每秒最多 10 次重渲染
+    - _Requirements: 12.4_
+  - [ ] 17.4 编写状态防抖属性测试
+    - **Property 44: State Update Debounce**
+    - **Validates: Requirements 12.4**
+  - [ ] 17.5 实现页面可见性优化
+    - 页面隐藏时暂停非必要处理
+    - _Requirements: 12.5_
+  - [ ] 17.6 编写页面可见性属性测试
+    - **Property 45: Page Visibility Optimization**
+    - **Validates: Requirements 12.5**
+
+- [ ] 18. Final Checkpoint - 完整功能验证
+  - 运行所有测试确保通过
+  - 验证所有重构功能正常工作
+  - 进行手动功能测试
+  - 如有问题请询问用户
+
+## Notes
+
+- 每个任务都关联到具体的需求以确保可追溯性
+- Checkpoint 任务用于阶段性验证，确保增量进度
+- 属性测试使用 fast-check 库，每个测试至少运行 100 次迭代
+- 单元测试和属性测试互补，共同确保代码正确性
+- 所有测试任务都是必须完成的，确保全面的测试覆盖
