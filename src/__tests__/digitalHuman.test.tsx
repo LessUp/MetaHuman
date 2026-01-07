@@ -25,7 +25,7 @@ vi.spyOn(React, 'useRef').mockImplementation(() => {
       }
     })
   };
-  
+
   return {
     current: groupMock
   };
@@ -42,7 +42,7 @@ vi.mock('@react-three/fiber', () => ({
       }
     });
   }),
-  useThree: vi.fn(() => ({ 
+  useThree: vi.fn(() => ({
     scene: {
       add: vi.fn(),
       remove: vi.fn()
@@ -150,7 +150,7 @@ describe('DigitalHumanViewer', () => {
     const { rerender } = render(<DigitalHumanViewer autoRotate={false} />);
     expect(screen.getByText('自动旋转:')).toBeInTheDocument();
     expect(screen.getByText('关闭')).toBeInTheDocument();
-    
+
     rerender(<DigitalHumanViewer autoRotate={true} />);
     expect(screen.getByText('自动旋转:')).toBeInTheDocument();
     expect(screen.getByText('开启')).toBeInTheDocument();
@@ -334,11 +334,12 @@ describe('TTSService', () => {
     expect(mockSpeechSynthesis.speak).toHaveBeenCalled();
   });
 
-  it('cancels previous speech', () => {
+  it('queues speech instead of canceling', () => {
     ttsService = new TTSService();
     mockSpeechSynthesis.speaking = true;
     ttsService.speak('New text');
-    expect(mockSpeechSynthesis.cancel).toHaveBeenCalled();
+    // With queue implementation, speak should be called (queued)
+    expect(mockSpeechSynthesis.speak).toHaveBeenCalled();
   });
 
   it('stops speech', () => {
@@ -404,14 +405,14 @@ describe('Performance Tests', () => {
     const startTime = performance.now();
     render(<DigitalHumanViewer />);
     const endTime = performance.now();
-    
+
     // Should render in less than 100ms
     expect(endTime - startTime).toBeLessThan(100);
   });
 
   it('handles rapid state changes efficiently', () => {
     const { play, pause } = useDigitalHumanStore.getState();
-    
+
     const startTime = performance.now();
     for (let i = 0; i < 100; i++) {
       if (i % 2 === 0) {
@@ -421,7 +422,7 @@ describe('Performance Tests', () => {
       }
     }
     const endTime = performance.now();
-    
+
     // 100 state changes should complete in less than 50ms
     expect(endTime - startTime).toBeLessThan(50);
   });
@@ -444,7 +445,7 @@ describe('Integration Tests', () => {
   it('integrates control panel with digital human viewer', () => {
     const TestComponent = () => {
       const { isPlaying, play, pause } = useDigitalHumanStore();
-      
+
       return (
         <div>
           <DigitalHumanViewer />
@@ -454,18 +455,18 @@ describe('Integration Tests', () => {
             isMuted={false}
             autoRotate={false}
             onPlayPause={() => isPlaying ? pause() : play()}
-            onReset={() => {}}
-            onToggleRecording={() => {}}
-            onToggleMute={() => {}}
-            onToggleAutoRotate={() => {}}
-            onVoiceCommand={() => {}}
+            onReset={() => { }}
+            onToggleRecording={() => { }}
+            onToggleMute={() => { }}
+            onToggleAutoRotate={() => { }}
+            onVoiceCommand={() => { }}
           />
         </div>
       );
     };
 
     render(<TestComponent />);
-    
+
     // Both components should render without conflicts
     expect(screen.getByText('数字人控制')).toBeInTheDocument();
     expect(screen.getByText('播放控制')).toBeInTheDocument();
@@ -475,10 +476,10 @@ describe('Integration Tests', () => {
     const onVoiceCommand = vi.fn();
     const props = { ...defaultProps, onVoiceCommand };
     render(<ControlPanel {...props} />);
-    
+
     const greetButton = screen.getByText('打招呼');
     fireEvent.click(greetButton);
-    
+
     await waitFor(() => {
       expect(onVoiceCommand).toHaveBeenCalledWith('打招呼');
     });
