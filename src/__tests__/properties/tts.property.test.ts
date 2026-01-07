@@ -138,7 +138,8 @@ describe('TTS Service Properties', () => {
 
         await fc.assert(
             fc.asyncProperty(
-                fc.string({ minLength: 1, maxLength: 100 }),
+                // Generate non-whitespace strings to ensure valid speech text
+                fc.string({ minLength: 1, maxLength: 100 }).filter(s => s.trim().length > 0),
                 async (text) => {
                     setSpeakingCalls.length = 0;
                     const tts = new TTSService();

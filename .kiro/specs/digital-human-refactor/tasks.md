@@ -309,56 +309,56 @@
   - 验证 UI 响应性正常
   - 如有问题请询问用户
 
-- [ ] 16. 重构后端对话服务
-  - [ ] 16.1 改进请求验证
+- [x] 16. 重构后端对话服务
+  - [x] 16.1 改进请求验证
     - 验证 userText 字段
     - 返回适当的错误响应
     - _Requirements: 11.2_
-  - [ ] 16.2 编写后端请求验证属性测试
+  - [x] 16.2 编写后端请求验证属性测试
     - **Property 38: Backend Request Validation**
     - **Validates: Requirements 11.2**
-  - [ ] 16.3 改进非 JSON 响应处理
+  - [x] 16.3 改进非 JSON 响应处理
     - LLM 返回非 JSON 时优雅处理
     - 使用原始文本作为 replyText
     - _Requirements: 11.3_
-  - [ ] 16.4 编写非 JSON 处理属性测试
+  - [x] 16.4 编写非 JSON 处理属性测试
     - **Property 39: Backend Non-JSON Handling**
     - **Validates: Requirements 11.3**
-  - [ ] 16.5 改进会话历史管理
+  - [x] 16.5 改进会话历史管理
     - 确保历史长度限制生效
     - _Requirements: 11.4_
-  - [ ] 16.6 编写后端历史限制属性测试
+  - [x] 16.6 编写后端历史限制属性测试
     - **Property 40: Backend Session History Limit**
     - **Validates: Requirements 11.4**
-  - [ ] 16.7 改进 URL 规范化
+  - [x] 16.7 改进 URL 规范化
     - 处理各种 OPENAI_BASE_URL 格式
     - _Requirements: 11.6_
-  - [ ] 16.8 编写 URL 规范化属性测试
+  - [x] 16.8 编写 URL 规范化属性测试
     - **Property 42: Backend URL Normalization**
     - **Validates: Requirements 11.6**
 
-- [ ] 17. 性能优化
-  - [ ] 17.1 实现帧率监控
+- [x] 17. 性能优化
+  - [x] 17.1 实现帧率监控
     - 添加 FPS 计算和显示
     - 确保维持 30+ FPS
     - _Requirements: 12.1_
-  - [ ] 17.2 编写帧率属性测试
+  - [x] 17.2 编写帧率属性测试
     - **Property 43: 3D Viewer Frame Rate**
     - **Validates: Requirements 12.1**
-  - [ ] 17.3 实现状态更新防抖
+  - [x] 17.3 实现状态更新防抖
     - 限制每秒最多 10 次重渲染
     - _Requirements: 12.4_
-  - [ ] 17.4 编写状态防抖属性测试
+  - [x] 17.4 编写状态防抖属性测试
     - **Property 44: State Update Debounce**
     - **Validates: Requirements 12.4**
-  - [ ] 17.5 实现页面可见性优化
+  - [x] 17.5 实现页面可见性优化
     - 页面隐藏时暂停非必要处理
     - _Requirements: 12.5_
-  - [ ] 17.6 编写页面可见性属性测试
+  - [x] 17.6 编写页面可见性属性测试
     - **Property 45: Page Visibility Optimization**
     - **Validates: Requirements 12.5**
 
-- [ ] 18. Final Checkpoint - 完整功能验证
+- [x] 18. Final Checkpoint - 完整功能验证
   - 运行所有测试确保通过
   - 验证所有重构功能正常工作
   - 进行手动功能测试

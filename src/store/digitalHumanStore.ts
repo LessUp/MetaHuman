@@ -38,6 +38,71 @@ export interface ChatMessage {
   timestamp: number;
 }
 
+// 状态更新防抖配置
+const DEBOUNCE_CONFIG = {
+  maxUpdatesPerSecond: 10,
+  debounceInterval: 100, // ms
+};
+
+// 防抖状态跟踪
+let lastUpdateTime = 0;
+let updateCount = 0;
+let windowStart = 0;
+let pendingUpdate: (() => void) | null = null;
+let debounceTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+// 防抖更新函数
+function debouncedSetState(updateFn: () => void): void {
+  const now = Date.now();
+
+  // 重置计数窗口
+  if (now - windowStart >= 1000) {
+    updateCount = 0;
+    windowStart = now;
+  }
+
+  // 检查是否超过每秒最大更新次数
+  if (updateCount >= DEBOUNCE_CONFIG.maxUpdatesPerSecond) {
+    pendingUpdate = updateFn;
+
+    if (!debounceTimeoutId) {
+      debounceTimeoutId = setTimeout(() => {
+        debounceTimeoutId = null;
+        if (pendingUpdate) {
+          pendingUpdate();
+          pendingUpdate = null;
+          updateCount++;
+        }
+      }, DEBOUNCE_CONFIG.debounceInterval);
+    }
+    return;
+  }
+
+  // 检查防抖间隔
+  if (now - lastUpdateTime < DEBOUNCE_CONFIG.debounceInterval) {
+    pendingUpdate = updateFn;
+
+    if (!debounceTimeoutId) {
+      const delay = DEBOUNCE_CONFIG.debounceInterval - (now - lastUpdateTime);
+      debounceTimeoutId = setTimeout(() => {
+        debounceTimeoutId = null;
+        if (pendingUpdate) {
+          pendingUpdate();
+          pendingUpdate = null;
+          lastUpdateTime = Date.now();
+          updateCount++;
+        }
+      }, delay);
+    }
+    return;
+  }
+
+  // 立即执行
+  updateFn();
+  lastUpdateTime = now;
+  updateCount++;
+}
+
 interface DigitalHumanState {
   // 模型状态
   isPlaying: boolean;
@@ -336,10 +401,14 @@ export const useDigitalHumanStore = create<DigitalHumanState>((set, get) => ({
 
   clearChatHistory: () => set({ chatHistory: [] }),
 
-  // 性能指标
-  updatePerformanceMetrics: (metrics) => set((state) => ({
-    performanceMetrics: { ...state.performanceMetrics, ...metrics }
-  })),
+  // 性能指标 - 使用防抖更新
+  updatePerformanceMetrics: (metrics) => {
+    debouncedSetState(() => {
+      set((state) => ({
+        performanceMetrics: { ...state.performanceMetrics, ...metrics }
+      }));
+    });
+  },
 
   // 控制方法
   play: () => {
