@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Environment, Float, Sparkles, ContactShadows, Html } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -40,15 +40,12 @@ function FPSMonitor({ onFPSUpdate }: { onFPSUpdate?: (fps: number) => void }) {
 
 // 页面可见性优化组件
 function VisibilityOptimizer({
-  autoRotate,
   onVisibilityChange
 }: {
   autoRotate: boolean;
   onVisibilityChange?: (visible: boolean) => void;
 }) {
   const { gl } = useThree();
-  const wasAutoRotateRef = useRef(autoRotate);
-  const controlsRef = useRef<any>(null);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
