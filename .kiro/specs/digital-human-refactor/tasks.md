@@ -55,146 +55,146 @@
   - 验证 ASR 权限和超时功能正常
   - 如有问题请询问用户
 
-- [ ] 4. 重构 Vision 视觉镜像服务
-  - [ ] 4.1 实现模型加载重试机制
+- [x] 4. 重构 Vision 视觉镜像服务
+  - [x] 4.1 实现模型加载重试机制
     - 添加 VisionServiceConfig 配置接口
     - 实现 loadModelsWithRetry() 带指数退避
     - 最大重试次数限制为 3
     - _Requirements: 4.3_
-  - [ ] 4.2 编写视觉模型重试属性测试
+  - [x] 4.2 编写视觉模型重试属性测试
     - **Property 9: Vision Model Retry**
     - **Validates: Requirements 4.3**
-  - [ ] 4.3 实现情绪检测防抖
+  - [x] 4.3 实现情绪检测防抖
     - 添加 emotionDebounceMs 配置
     - 实现 debounceEmotion() 方法
     - 只发送稳定的情绪变化
     - _Requirements: 4.5_
-  - [ ] 4.4 编写情绪防抖属性测试
+  - [x] 4.4 编写情绪防抖属性测试
     - **Property 10: Vision Emotion Debounce**
     - **Validates: Requirements 4.5**
-  - [ ] 4.5 实现动作检测冷却
+  - [x] 4.5 实现动作检测冷却
     - 添加 motionCooldownMs 配置
     - 实现 shouldEmitMotion() 方法
     - 防止重复动作检测
     - _Requirements: 4.6_
-  - [ ] 4.6 编写动作冷却属性测试
+  - [x] 4.6 编写动作冷却属性测试
     - **Property 11: Vision Motion Cooldown**
     - **Validates: Requirements 4.6**
-  - [ ] 4.7 改进资源释放
+  - [x] 4.7 改进资源释放
     - 确保 stop() 释放所有摄像头资源
     - 清理 MediaPipe 模型引用
     - _Requirements: 4.7_
-  - [ ] 4.8 编写视觉资源清理属性测试
+  - [x] 4.8 编写视觉资源清理属性测试
     - **Property 12: Vision Resource Cleanup**
     - **Validates: Requirements 4.7**
 
-- [ ] 5. 重构 Dialogue 对话服务
-  - [ ] 5.1 改进重试逻辑
+- [x] 5. 重构 Dialogue 对话服务
+  - [x] 5.1 改进重试逻辑
     - 实现指数退避重试
     - 区分可重试和不可重试错误
     - 添加重试状态跟踪
     - _Requirements: 5.1_
-  - [ ] 5.2 编写对话重试属性测试
+  - [x] 5.2 编写对话重试属性测试
     - **Property 13: Dialogue Retry with Backoff**
     - **Validates: Requirements 5.1**
-  - [ ] 5.3 实现响应验证
+  - [x] 5.3 实现响应验证
     - 添加 validateResponse() 函数
     - 处理缺失字段的默认值
     - _Requirements: 5.6_
-  - [ ] 5.4 编写响应验证属性测试
+  - [x] 5.4 编写响应验证属性测试
     - **Property 18: Dialogue Response Validation**
     - **Validates: Requirements 5.6**
-  - [ ] 5.5 改进降级响应
+  - [x] 5.5 改进降级响应
     - 基于用户输入生成智能降级响应
     - 添加上下文感知的回复
     - _Requirements: 5.2_
-  - [ ] 5.6 编写降级响应属性测试
+  - [x] 5.6 编写降级响应属性测试
     - **Property 14: Dialogue Fallback Response**
     - **Validates: Requirements 5.2**
-  - [ ] 5.7 实现会话历史管理
+  - [x] 5.7 实现会话历史管理
     - 添加历史长度限制配置
     - 实现历史修剪逻辑
     - 添加 clearSession 和 getSessionHistory 方法
     - _Requirements: 5.3, 5.7_
-  - [ ] 5.8 编写会话历史属性测试
+  - [x] 5.8 编写会话历史属性测试
     - **Property 15: Dialogue History Trimming**
     - **Validates: Requirements 5.3**
-  - [ ] 5.9 实现连接状态同步
+  - [x] 5.9 实现连接状态同步
     - 通信失败时更新 Store connectionStatus
     - 添加连接详情跟踪
     - _Requirements: 5.4_
-  - [ ] 5.10 编写连接状态同步属性测试
+  - [x] 5.10 编写连接状态同步属性测试
     - **Property 16: Dialogue Connection Status Sync**
     - **Validates: Requirements 5.4**
 
-- [ ] 6. Checkpoint - 对话服务重构验证
+- [x] 6. Checkpoint - 对话服务重构验证
   - 确保所有对话相关测试通过
   - 验证重试和降级功能正常
   - 验证会话管理功能正常
   - 如有问题请询问用户
 
-- [ ] 7. 重构 Dialogue Orchestrator 对话编排器
-  - [ ] 7.1 实现正确的状态更新顺序
+- [x] 7. 重构 Dialogue Orchestrator 对话编排器
+  - [x] 7.1 实现正确的状态更新顺序
     - 确保 emotion → action → speech 顺序
     - 添加状态转换日志
     - _Requirements: 6.1_
-  - [ ] 7.2 编写状态顺序属性测试
+  - [x] 7.2 编写状态顺序属性测试
     - **Property 19: Orchestrator State Sequence**
     - **Validates: Requirements 6.1**
-  - [ ] 7.3 实现语音完成等待
+  - [x] 7.3 实现语音完成等待
     - 添加 waitForSpeech 选项
     - 语音完成后才重置到 idle
     - _Requirements: 6.2_
-  - [ ] 7.4 编写语音等待属性测试
+  - [x] 7.4 编写语音等待属性测试
     - **Property 20: Orchestrator Speech Wait**
     - **Validates: Requirements 6.2**
-  - [ ] 7.5 实现无效值降级
+  - [x] 7.5 实现无效值降级
     - 验证 emotion 和 action 值
     - 无效值使用 neutral/idle
     - _Requirements: 6.3_
-  - [ ] 7.6 编写无效值降级属性测试
+  - [x] 7.6 编写无效值降级属性测试
     - **Property 21: Orchestrator Invalid Value Fallback**
     - **Validates: Requirements 6.3**
-  - [ ] 7.7 实现静音行为
+  - [x] 7.7 实现静音行为
     - isMuted 时跳过语音但更新视觉状态
     - _Requirements: 6.4_
-  - [ ] 7.8 编写静音行为属性测试
+  - [x] 7.8 编写静音行为属性测试
     - **Property 22: Orchestrator Muted Behavior**
     - **Validates: Requirements 6.4**
 
-- [ ] 8. 重构 Digital Human Engine 数字人引擎
-  - [ ] 8.1 实现动画队列系统
+- [x] 8. 重构 Digital Human Engine 数字人引擎
+  - [x] 8.1 实现动画队列系统
     - 添加 AnimationQueueItem 接口
     - 实现 queueAnimation() 方法
     - 实现 FIFO 队列处理
     - 添加 clearAnimationQueue() 和 getQueueLength()
     - _Requirements: 7.2_
-  - [ ] 8.2 编写动画队列属性测试
+  - [x] 8.2 编写动画队列属性测试
     - **Property 23: Engine Animation Queue**
     - **Validates: Requirements 7.2**
-  - [ ] 8.3 实现动画自动重置
+  - [x] 8.3 实现动画自动重置
     - 动画完成后自动返回 idle
     - 支持 autoReset=false 禁用
     - _Requirements: 7.3_
-  - [ ] 8.4 编写动画自动重置属性测试
+  - [x] 8.4 编写动画自动重置属性测试
     - **Property 24: Engine Animation Auto-Reset**
     - **Validates: Requirements 7.3**
-  - [ ] 8.5 实现情感-表情映射
+  - [x] 8.5 实现情感-表情映射
     - 完善 EMOTION_TO_EXPRESSION 映射
     - setEmotion 自动设置对应表情
     - _Requirements: 7.4_
-  - [ ] 8.6 编写情感映射属性测试
+  - [x] 8.6 编写情感映射属性测试
     - **Property 25: Engine Emotion-Expression Mapping**
     - **Validates: Requirements 7.4**
-  - [ ] 8.7 实现无效表情降级
+  - [x] 8.7 实现无效表情降级
     - 验证表情值有效性
     - 无效值使用 neutral 并记录警告
     - _Requirements: 7.5_
-  - [ ] 8.8 编写无效表情降级属性测试
+  - [x] 8.8 编写无效表情降级属性测试
     - **Property 26: Engine Invalid Expression Fallback**
     - **Validates: Requirements 7.5**
 
-- [ ] 9. Checkpoint - 核心引擎重构验证
+- [x] 9. Checkpoint - 核心引擎重构验证
   - 确保所有引擎相关测试通过
   - 验证动画队列功能正常
   - 验证状态映射功能正常
